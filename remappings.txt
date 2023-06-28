@@ -1,0 +1,7 @@
+@aperture_finance/uni-v3-lib/=node_modules/@aperture_finance/uni-v3-lib/
+@openzeppelin/=node_modules/@openzeppelin/
+@uniswap/=node_modules/@uniswap/
+solady/=node_modules/solady/
+solmate/=node_modules/solmate/
+forge-std/=lib/forge-std/src/
+token-vesting-contracts/=lib/token-vesting-contracts/contracts/

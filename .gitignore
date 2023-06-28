@@ -1,0 +1,14 @@
+.DS_Store
+.idea
+node_modules
+.env
+
+# Foundry cache
+cache
+dry-run
+out
+
+# Hardhat cache
+artifacts
+cache_hardhat
+typechain-types

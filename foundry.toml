@@ -1,0 +1,54 @@
+[profile.default]
+src = 'src'
+out = 'out'
+libs = ['lib']
+test = 'test'
+cache = true
+
+solc_version = '0.8.20'
+evm_version = 'shanghai'
+optimizer = true
+optimizer_runs = 4294967295
+via_ir = true
+bytecode_hash = 'none'
+sparse_mode = true
+ignored_error_codes = [3860, 5574]
+
+verbosity = 2
+ffi = false
+fs_permissions = [{ access = "read", path = "./script" }]
+
+[profile.default.optimizer_details]
+yul = true
+
+[fuzz]
+runs = 256
+seed = 42
+
+[invariant]
+runs = 64
+depth = 16
+fail_on_revert = false
+
+[fmt]
+line_length = 80
+multiline_func_header = 'params_first'
+
+[profile.lite]
+optimizer_runs = 200
+via_ir = false
+
+[profile.lite.fuzz]
+runs = 16
+
+[profile.lite.invariant]
+runs = 16
+
+[rpc_endpoints]
+mainnet = "${MAINNET_RPC_URL}"
+goerli = "${GOERLI_RPC_URL}"
+arbitrum_one = "${ARBITRUM_RPC_URL}"
+optimism = "${OPTIMISM_RPC_URL}"
+avalanche = "https://api.avax.network/ext/bc/C/rpc"
+
+# See more config options https://github.com/foundry-rs/foundry/tree/master/config

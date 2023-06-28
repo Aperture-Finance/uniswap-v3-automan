@@ -1,0 +1,44 @@
+{
+  "name": "aperture_core_contracts",
+  "version": "0.9.0",
+  "author": "Aperture Finance",
+  "license": "BUSL-1.1",
+  "scripts": {
+    "compile": "forge build",
+    "size": "forge build --sizes",
+    "test": "forge test",
+    "snapshot": "forge snapshot",
+    "snapshot:diff": "forge snapshot --diff",
+    "prettier": "prettier -c {script,src,test}/**/*.sol",
+    "prettier:fix": "prettier -w {script,src,test}/**/*.sol",
+    "typechain": "hardhat typechain"
+  },
+  "dependencies": {
+    "@aperture_finance/uni-v3-lib": "^1.1.0",
+    "@openzeppelin/contracts": "^4.9.2",
+    "@uniswap/v3-core": "^1.0.1",
+    "@uniswap/v3-periphery": "^1.4.3",
+    "solady": "^0.0.107",
+    "solmate": "^6.7.0"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.0.2",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@typechain/ethers-v5": "^11.0.0",
+    "@typechain/hardhat": "^8.0.0",
+    "ethers": "5.7.2",
+    "hardhat": "^2.16.1",
+    "prettier": "^2.8.8",
+    "prettier-plugin-solidity": "^1.1.3",
+    "ts-node": "^10.9.1",
+    "typechain": "^8.2.0",
+    "typescript": "^5.1.5"
+  },
+  "prettier": {
+    "plugins": [
+      "prettier-plugin-solidity"
+    ],
+    "endOfLine": "lf",
+    "printWidth": 120
+  }
+}
