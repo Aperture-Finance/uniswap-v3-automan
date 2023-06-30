@@ -14,8 +14,7 @@ contract DeployAutoman is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    // TODO: Update `salt` once the bytecode is finalized and a vanity address is found.
-    bytes32 internal constant salt = 0;
+    bytes32 internal constant salt = 0xef0d3d29c8a2331b039ae130bfd91a9caf90a2712640bd45793c17e79cbc254f;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
     function readInput(string memory input) internal view returns (string memory) {
