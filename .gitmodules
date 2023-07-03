@@ -4,3 +4,6 @@
 [submodule "lib/token-vesting-contracts"]
 	path = lib/token-vesting-contracts
 	url = https://github.com/Aperture-Finance/token-vesting-contracts
+[submodule "lib/narya-contracts"]
+	path = lib/narya-contracts
+	url = https://github.com/NaryaAI/narya-contracts

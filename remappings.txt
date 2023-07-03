@@ -5,3 +5,4 @@ solady/=node_modules/solady/
 solmate/=node_modules/solmate/
 forge-std/=lib/forge-std/src/
 token-vesting-contracts/=lib/token-vesting-contracts/contracts/
+@narya-ai/=lib/narya-contracts/
