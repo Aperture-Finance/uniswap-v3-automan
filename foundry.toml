@@ -5,10 +5,10 @@ libs = ['lib']
 test = 'test'
 cache = true
 
-solc_version = '0.8.20'
-evm_version = 'paris'
+# solc_version = '0.8.20'
+# evm_version = 'paris'
 # optimizer = true
-#optimizer_runs = 4294967295
+# optimizer_runs = 4294967295
 via_ir = true
 bytecode_hash = 'none'
 sparse_mode = true
