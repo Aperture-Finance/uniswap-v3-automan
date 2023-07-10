@@ -10,7 +10,7 @@ using ERC20Caller for ERC20Callee global;
 
 /// @title ERC20 Caller
 /// @author Aperture Finance
-/// @notice Gas efficient library to call ERC20 token assuming the token exists and sticks to the ERC20 standard.
+/// @notice Gas efficient library to call ERC20 token assuming the token exists
 library ERC20Caller {
     /// @dev Equivalent to `IERC20.totalSupply`
     /// @param token ERC20 token
@@ -22,7 +22,10 @@ library ERC20Caller {
             // We use 4 because of the length of our calldata.
             // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
             // `totalSupply` should never revert according to the ERC20 standard.
-            amount := mload(iszero(staticcall(gas(), token, 0, 4, 0, 0x20)))
+            if iszero(staticcall(gas(), token, 0, 4, 0, 0x20)) {
+                revert(0, 0)
+            }
+            amount := mload(0)
         }
     }
 
@@ -38,7 +41,10 @@ library ERC20Caller {
             // We use 36 because of the length of our calldata.
             // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
             // `balanceOf` should never revert according to the ERC20 standard.
-            amount := mload(iszero(staticcall(gas(), token, 0, 0x24, 0, 0x20)))
+            if iszero(staticcall(gas(), token, 0, 0x24, 0, 0x20)) {
+                revert(0, 0)
+            }
+            amount := mload(0)
         }
     }
 
@@ -56,7 +62,10 @@ library ERC20Caller {
             // We use 68 because of the length of our calldata.
             // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
             // `allowance` should never revert according to the ERC20 standard.
-            amount := mload(iszero(staticcall(gas(), token, 0, 0x44, 0, 0x20)))
+            if iszero(staticcall(gas(), token, 0, 0x44, 0, 0x20)) {
+                revert(0, 0)
+            }
+            amount := mload(0)
             // Clear first 4 bytes of the free memory pointer.
             mstore(0x24, 0)
         }
