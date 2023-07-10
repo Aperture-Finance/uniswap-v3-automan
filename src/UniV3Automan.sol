@@ -770,8 +770,10 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
         bytes calldata swapData
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         checkFeeSanity(feePips);
+        uint256 tokenId = params.tokenId;
+        checkAuthorizedForToken(tokenId);
         (liquidity, amount0, amount1) = _reinvest(params, feePips, swapData);
-        emit Reinvest(params.tokenId);
+        emit Reinvest(tokenId);
     }
 
     /// @inheritdoc IUniV3Automan
@@ -786,6 +788,7 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
+        checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
         (liquidity, amount0, amount1) = _reinvest(params, feePips, swapData);
         emit Reinvest(tokenId);
