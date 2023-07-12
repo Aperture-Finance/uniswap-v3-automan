@@ -122,7 +122,7 @@ library PositionLens {
             // Write the function selector into memory.
             mstore(0, selector)
             // We use 4 because of the length of our calldata.
-            // We use 0 and 64 to copy up to 64 bytes of return data into the scratch space.
+            // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
             if iszero(staticcall(gas(), npm, 0, 4, 0, 0x20)) {
                 revert(0, 0)
             }
@@ -138,7 +138,7 @@ library PositionLens {
             // Write the function selector into memory.
             mstore(0, selector)
             // We use 4 because of the length of our calldata.
-            // We use 0 and 64 to copy up to 64 bytes of return data into the scratch space.
+            // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
             if iszero(staticcall(gas(), pool, 0, 4, 0, 0x20)) {
                 revert(0, 0)
             }
@@ -154,7 +154,7 @@ library PositionLens {
             // Write the function selector into memory.
             mstore(0, selector)
             // We use 4 because of the length of our calldata.
-            // We use 0 and 64 to copy up to 64 bytes of return data into the scratch space.
+            // We use 0 and 32 to copy up to 32 bytes of return data into the scratch space.
             if iszero(staticcall(gas(), pool, 0, 4, 0, 0x20)) {
                 revert(0, 0)
             }
