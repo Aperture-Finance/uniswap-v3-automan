@@ -16,6 +16,7 @@ const config: HardhatUserConfig = {
         runs: 4294967295,
       },
       viaIR: true,
+      evmVersion: "paris",
     }
   } as SolidityUserConfig,
   typechain: {
