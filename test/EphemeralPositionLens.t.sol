@@ -29,18 +29,22 @@ contract EphemeralPositionLensTest is UniBase {
                 assertEq(tickLower, pos.position.tickLower, "tickLower");
                 assertEq(liquidity, pos.position.liquidity, "liquidity");
             }
-            IUniswapV3Pool pool = IUniswapV3Pool(
-                PoolAddress.computeAddressSorted(
-                    npm.factory(),
-                    pos.position.token0,
-                    pos.position.token1,
-                    pos.position.fee
-                )
-            );
-            (uint160 sqrtPriceX96, int24 tick, , , , , ) = pool.slot0();
-            assertEq(sqrtPriceX96, pos.slot0.sqrtPriceX96, "sqrtPriceX96");
-            assertEq(tick, pos.slot0.tick, "tick");
-            assertEq(pool.liquidity(), pos.activeLiquidity, "liquidity");
+            {
+                IUniswapV3Pool pool = IUniswapV3Pool(
+                    PoolAddress.computeAddressSorted(
+                        npm.factory(),
+                        pos.position.token0,
+                        pos.position.token1,
+                        pos.position.fee
+                    )
+                );
+                (uint160 sqrtPriceX96, int24 tick, , , , , ) = pool.slot0();
+                assertEq(sqrtPriceX96, pos.slot0.sqrtPriceX96, "sqrtPriceX96");
+                assertEq(tick, pos.slot0.tick, "tick");
+                assertEq(pool.liquidity(), pos.activeLiquidity, "liquidity");
+            }
+            assertEq(IERC20Metadata(pos.position.token0).decimals(), pos.decimals0, "decimals0");
+            assertEq(IERC20Metadata(pos.position.token1).decimals(), pos.decimals1, "decimals1");
         } catch Error(string memory reason) {
             vm.expectRevert(bytes(reason));
             npm.positions(tokenId);

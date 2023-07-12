@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import {INonfungiblePositionManager as INPM, IPeripheryImmutableState} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
 import {FullMath} from "@aperture_finance/uni-v3-lib/src/FullMath.sol";
@@ -97,9 +98,16 @@ struct Slot0 {
 }
 
 struct PositionState {
+    // nonfungible position manager's position struct with real-time tokensOwed
     PositionFull position;
+    // pool's slot0 struct
     Slot0 slot0;
+    // pool's active liquidity
     uint128 activeLiquidity;
+    // token0's decimals
+    uint8 decimals0;
+    // token1's decimals
+    uint8 decimals1;
 }
 
 library PositionLens {
@@ -128,6 +136,20 @@ library PositionLens {
                 full.slot0.tick
             );
             updatePosition(full.position, feeGrowthInside0X128, feeGrowthInside1X128);
+        }
+        full.decimals0 = decimals(full.position.token0);
+        full.decimals1 = decimals(full.position.token1);
+    }
+
+    /// @dev Equivalent to `IERC20Metadata.decimals` with 18 as fallback
+    /// @param token ERC20 token
+    function decimals(address token) internal view returns (uint8 d) {
+        bytes4 selector = IERC20Metadata.decimals.selector;
+        assembly ("memory-safe") {
+            mstore(0, 18)
+            mstore(0x20, selector)
+            let success := staticcall(gas(), token, 0x20, 4, 0x20, 0x20)
+            d := mload(shl(5, success))
         }
     }
 
