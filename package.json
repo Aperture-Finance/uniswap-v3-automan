@@ -1,6 +1,6 @@
 {
-  "name": "aperture_core_contracts",
-  "version": "0.9.0",
+  "name": "uniswap_v3_automan",
+  "version": "1.0.0",
   "author": "Aperture Finance",
   "license": "BUSL-1.1",
   "scripts": {
