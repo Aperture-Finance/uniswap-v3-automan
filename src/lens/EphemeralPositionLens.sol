@@ -14,11 +14,18 @@ import {IUniswapV3PoolState, PoolCaller, V3PoolCallee} from "@aperture_finance/u
 /// `address(new EphemeralGetPosition(npm, tokenId)).code`, and decoded by `abi.decode(data, (PositionState))`
 contract EphemeralGetPosition {
     constructor(INPM npm, uint256 tokenId) {
-        PositionState memory pos = PositionLens.peek(npm, tokenId);
+        PositionState memory pos = getPosition(npm, tokenId);
         bytes memory returnData = abi.encode(pos);
         assembly ("memory-safe") {
             return(add(returnData, 0x20), mload(returnData))
         }
+    }
+
+    /// @dev Public function to expose the abi for easier decoding using TypeChain
+    /// @param npm Nonfungible position manager
+    /// @param tokenId Token ID of the position
+    function getPosition(INPM npm, uint256 tokenId) public view returns (PositionState memory) {
+        return PositionLens.peek(npm, tokenId);
     }
 }
 
@@ -28,19 +35,29 @@ contract EphemeralGetPosition {
 /// `address(new EphemeralAllPositions(npm, owner)).code`, and decoded by `abi.decode(data, (uint256[], PositionState[]))`
 contract EphemeralAllPositions {
     constructor(INPM npm, address owner) {
+        (uint256[] memory tokenIds, PositionState[] memory positions) = allPositions(npm, owner);
+        bytes memory returnData = abi.encode(tokenIds, positions);
+        assembly ("memory-safe") {
+            return(add(returnData, 0x20), mload(returnData))
+        }
+    }
+
+    /// @dev Public function to expose the abi for easier decoding using TypeChain
+    /// @param npm Nonfungible position manager
+    /// @param owner The address that owns the NFTs
+    function allPositions(
+        INPM npm,
+        address owner
+    ) public view returns (uint256[] memory tokenIds, PositionState[] memory positions) {
         uint256 balance = NPMCaller.balanceOf(npm, owner);
-        uint256[] memory tokenIds = new uint256[](balance);
-        PositionState[] memory allPositions = new PositionState[](balance);
+        tokenIds = new uint256[](balance);
+        positions = new PositionState[](balance);
         unchecked {
             for (uint256 i; i < balance; ++i) {
                 uint256 tokenId = tokenOfOwnerByIndex(npm, owner, i);
                 tokenIds[i] = tokenId;
-                allPositions[i] = PositionLens.peek(npm, tokenId);
+                positions[i] = PositionLens.peek(npm, tokenId);
             }
-        }
-        bytes memory returnData = abi.encode(tokenIds, allPositions);
-        assembly ("memory-safe") {
-            return(add(returnData, 0x20), mload(returnData))
         }
     }
 
