@@ -14,7 +14,7 @@
     "typechain": "hardhat typechain"
   },
   "dependencies": {
-    "@aperture_finance/uni-v3-lib": "^1.1.0",
+    "@aperture_finance/uni-v3-lib": "^1.1.1",
     "@openzeppelin/contracts": "^4.9.2",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.3",

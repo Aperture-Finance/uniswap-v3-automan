@@ -3,7 +3,7 @@
 // https://blog.soliditylang.org/2021/09/27/user-defined-value-types/
 pragma solidity ^0.8.8;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 type ERC20Callee is address;
 using ERC20Caller for ERC20Callee global;
@@ -68,6 +68,21 @@ library ERC20Caller {
             amount := mload(0)
             // Clear first 4 bytes of the free memory pointer.
             mstore(0x24, 0)
+        }
+    }
+
+    /// @dev Equivalent to `IERC20Metadata.decimals` with 18 as fallback
+    /// @param token ERC20 token
+    function decimals(ERC20Callee token) internal view returns (uint8 d) {
+        bytes4 selector = IERC20Metadata.decimals.selector;
+        assembly ("memory-safe") {
+            // Store 18 to memory to use as fallback.
+            mstore(0, 18)
+            // Write the function selector into memory.
+            mstore(0x20, selector)
+            let success := staticcall(gas(), token, 0x20, 4, 0x20, 0x20)
+            // Read from 0x20 if the call was successful, otherwise read from 0.
+            d := mload(shl(5, success))
         }
     }
 }

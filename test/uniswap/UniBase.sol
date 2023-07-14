@@ -55,6 +55,9 @@ abstract contract UniBase is Test, Helper, IERC721Receiver, IERC1271, IUniswapV3
         if (chainId == 1) {
             blockNumber = 17000000;
             USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+        } else if (chainId == 5) {
+            blockNumber = 9000000;
+            USDC = 0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C;
         } else if (chainId == 10) {
             blockNumber = 20000000;
             USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
