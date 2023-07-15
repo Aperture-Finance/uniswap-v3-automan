@@ -1,5 +1,5 @@
 ERC20CallerTest:testFuzz_Allowance(address,address,address) (runs: 256, μ: 35465847065546022, ~: 3456)
-ERC20CallerTest:testFuzz_BalanceOf(address,address) (runs: 256, μ: 35465847065545807, ~: 3258)
+ERC20CallerTest:testFuzz_BalanceOf(address,address) (runs: 256, μ: 35465847065545806, ~: 3258)
 ERC20CallerTest:testFuzz_TotalSupply(address) (runs: 256, μ: 70931694131088265, ~: 3095)
 ERC20CallerTest:test_Allowance(address,address) (runs: 256, μ: 15329, ~: 15329)
 ERC20CallerTest:test_BalanceOf(address) (runs: 256, μ: 14695, ~: 14695)
