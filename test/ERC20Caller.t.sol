@@ -59,4 +59,9 @@ contract ERC20CallerTest is Test {
             );
         }
     }
+
+    function test_Decimals() public {
+        address token = USDC;
+        assertEq(IERC20Metadata(token).decimals(), ERC20Callee.wrap(token).decimals(), "decimals mismatch");
+    }
 }
