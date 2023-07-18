@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@aperture_finance/uni-v3-lib@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@aperture_finance/uni-v3-lib/-/uni-v3-lib-1.1.0.tgz#6435fd54927e20678c9dce773ce1faa6058d46e8"
-  integrity sha512-g58tg0SjmMRkqbilSgvpdwxLIXqp8ggcvuZ3on4Y2gt+B2IuQ5umiOhq+g/gnsfxMiGG2uXrk99wY9+xONKtbw==
+"@aperture_finance/uni-v3-lib@^1.1.1":
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/@aperture_finance/uni-v3-lib/-/uni-v3-lib-1.1.1.tgz#87e435d443f475602eaf128b9c285679cdac034f"
+  integrity sha512-goprEflsg/kOUqo2oon22UYclhhQSukOJy/tcnNGLiD4y4IaeYp/6XWcM5eLoV8GBF/zZlKGWa6X40TfIJ+ngw==
   dependencies:
     "@openzeppelin/contracts" "^4.9.2"
     "@uniswap/v3-core" "^1.0.1"
@@ -1668,10 +1668,10 @@ graceful-fs@^4.1.2, graceful-fs@^4.1.6, graceful-fs@^4.1.9, graceful-fs@^4.2.0:
   resolved "https://registry.yarnpkg.com/graceful-fs/-/graceful-fs-4.2.11.tgz#4183e4e8bf08bb6e05bbb2f7d2e0c8f712ca40e3"
   integrity sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==
 
-hardhat@^2.16.1:
-  version "2.16.1"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.16.1.tgz#fd2288ce44f6846a70ba332b3d8158522447262a"
-  integrity sha512-QpBjGXFhhSYoYBGEHyoau/A63crZOP+i3GbNxzLGkL6IklzT+piN14+wGnINNCg5BLSKisQI/RAySPzaWRcx/g==
+hardhat@^2.17.0:
+  version "2.17.0"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.17.0.tgz#574478790fa4f4a45c5ccf162e82e54f36671749"
+  integrity sha512-CaEGa13tkJNe2/rdaBiive4pmdNShwxvdWVhr1zfb6aVpRhQt9VNO0l/UIBt/zzajz38ZFjvhfM2bj8LDXo9gw==
   dependencies:
     "@ethersproject/abi" "^5.1.2"
     "@metamask/eth-sig-util" "^4.0.0"
@@ -2241,10 +2241,15 @@ prettier-plugin-solidity@^1.1.3:
     semver "^7.3.8"
     solidity-comments-extractor "^0.0.7"
 
-prettier@^2.3.1, prettier@^2.8.8:
+prettier@^2.3.1:
   version "2.8.8"
   resolved "https://registry.yarnpkg.com/prettier/-/prettier-2.8.8.tgz#e8c5d7e98a4305ffe3de2e1fc4aca1a71c28b1da"
   integrity sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==
+
+prettier@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/prettier/-/prettier-3.0.0.tgz#e7b19f691245a21d618c68bc54dc06122f6105ae"
+  integrity sha512-zBf5eHpwHOGPC47h0zrPyNn+eAEIdEzfywMoYn2XPi0P44Zp0tSq64rq0xAREh4auw2cJZHo9QUob+NqCQky4g==
 
 queue-microtask@^1.2.2, queue-microtask@^1.2.3:
   version "1.2.3"
@@ -2415,6 +2420,11 @@ solady@^0.0.107:
   version "0.0.107"
   resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.107.tgz#b9b218b1e16f804714e4f6d41a75ac50dec2345b"
   integrity sha512-etZ9XZ5IlHiLaE3itu6w7gROVVO7s2bBUfuCw/hMx9u2Jpv8rYv7l1SYAdAiBT6WKbpwBvp8PPLtIcoLKmIFKQ==
+
+solady@^0.0.108:
+  version "0.0.108"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.108.tgz#e3d0180f37cd1aef79031e30450b3d01affd363f"
+  integrity sha512-0iRLxk1Uh0GwHmwaWUpHRKsP8s12uKGrnlhOspUGkPT9rEKbufMYOXFHjUTX7hjZQjOwsNLEpAWYkX7aZn2w6Q==
 
 solc@0.7.3:
   version "0.7.3"
@@ -2641,10 +2651,10 @@ typechain@^8.2.0:
     ts-command-line-args "^2.2.0"
     ts-essentials "^7.0.1"
 
-typescript@^5.1.5:
-  version "5.1.5"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.1.5.tgz#a3ae755082488b6046fe64345d293ef26af08671"
-  integrity sha512-FOH+WN/DQjUvN6WgW+c4Ml3yi0PH+a/8q+kNIfRehv1wLhWONedw85iu+vQ39Wp49IzTJEsZ2lyLXpBF7mkF1g==
+typescript@^5.1.6:
+  version "5.1.6"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-5.1.6.tgz#02f8ac202b6dad2c0dd5e0913745b47a37998274"
+  integrity sha512-zaWCozRZ6DLEWAWFrVDz1H6FVXzUSfTy5FUMWsQlU8Ym5JP9eO4xkTIROFCQvhQf61z6O/G6ugw3SgAnvvm+HA==
 
 typical@^4.0.0:
   version "4.0.0"
