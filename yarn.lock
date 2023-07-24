@@ -775,18 +775,18 @@
   resolved "https://registry.yarnpkg.com/@tsconfig/node16/-/node16-1.0.4.tgz#0b92dcc0cc1c81f6f306a381f28e31b1a56536e9"
   integrity sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==
 
-"@typechain/ethers-v5@^11.0.0":
-  version "11.0.0"
-  resolved "https://registry.yarnpkg.com/@typechain/ethers-v5/-/ethers-v5-11.0.0.tgz#8a11b34a386a30eed34375d05a09f893f7df838f"
-  integrity sha512-JDAvOjtzGuEQukgArIEseHznS2+v+vG3TpfODjNj4tu1kgmVu66G9gk7THOO04HJ5q+OJSLx9b46lc3GRGPIVA==
+"@typechain/ethers-v5@^11.1.1":
+  version "11.1.1"
+  resolved "https://registry.yarnpkg.com/@typechain/ethers-v5/-/ethers-v5-11.1.1.tgz#23a358135a302140cf89a186592464dd6bbf1f98"
+  integrity sha512-D9WyUrCJ4Z5Gg8T00HWLpuqn1CqSDXlCiUOOpLaWoCbnZrE2jSIOUwR9blBZNo6LE5058e3niVu6xk205Et7tg==
   dependencies:
     lodash "^4.17.15"
     ts-essentials "^7.0.1"
 
-"@typechain/hardhat@^8.0.0":
-  version "8.0.0"
-  resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-8.0.0.tgz#60568b7a2d0260cc741fb0830a8caee8eb06ac64"
-  integrity sha512-XUVbqlMx8tJTOmzZCD/r196CidtNWAnTBZRcYxjLTKgcJMvc/kHQpWBnVMMB5QHxVKpYpCiz8g07FYCpG8rrjA==
+"@typechain/hardhat@^8.0.3":
+  version "8.0.3"
+  resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-8.0.3.tgz#a114825f130405bbb8e535314003733b7ce3f91c"
+  integrity sha512-MytSmJJn+gs7Mqrpt/gWkTCOpOQ6ZDfRrRT2gtZL0rfGe4QrU4x9ZdW15fFbVM/XTa+5EsKiOMYXhRABibNeng==
   dependencies:
     fs-extra "^9.1.0"
 
@@ -2421,10 +2421,10 @@ solady@^0.0.107:
   resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.107.tgz#b9b218b1e16f804714e4f6d41a75ac50dec2345b"
   integrity sha512-etZ9XZ5IlHiLaE3itu6w7gROVVO7s2bBUfuCw/hMx9u2Jpv8rYv7l1SYAdAiBT6WKbpwBvp8PPLtIcoLKmIFKQ==
 
-solady@^0.0.108:
-  version "0.0.108"
-  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.108.tgz#e3d0180f37cd1aef79031e30450b3d01affd363f"
-  integrity sha512-0iRLxk1Uh0GwHmwaWUpHRKsP8s12uKGrnlhOspUGkPT9rEKbufMYOXFHjUTX7hjZQjOwsNLEpAWYkX7aZn2w6Q==
+solady@^0.0.110:
+  version "0.0.110"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.110.tgz#6525da376e5a2ab148f6686c14eb0829b8fa335d"
+  integrity sha512-ZX9kDfj3CgufsqbrPkgjtgtcBMzxzdfdkpulqhVpCVeMLODFaiuddZQN8735vI20W7jJ3Gcmq6PZRGIusU3t9Q==
 
 solc@0.7.3:
   version "0.7.3"
@@ -2635,10 +2635,10 @@ type-fest@^0.7.1:
   resolved "https://registry.yarnpkg.com/type-fest/-/type-fest-0.7.1.tgz#8dda65feaf03ed78f0a3f9678f1869147f7c5c48"
   integrity sha512-Ne2YiiGN8bmrmJJEuTWTLJR32nh/JdL1+PSicowtNb0WFpn59GK8/lfD61bVtzguz7b3PBt74nxpv/Pw5po5Rg==
 
-typechain@^8.2.0:
-  version "8.2.0"
-  resolved "https://registry.yarnpkg.com/typechain/-/typechain-8.2.0.tgz#bd4fc8f111d4405e36858bae6f744604617b60f3"
-  integrity sha512-tZqhqjxJ9xAS/Lh32jccTjMkpx7sTdUVVHAy5Bf0TIer5QFNYXotiX74oCvoVYjyxUKDK3MXHtMFzMyD3kE+jg==
+typechain@^8.3.1:
+  version "8.3.1"
+  resolved "https://registry.yarnpkg.com/typechain/-/typechain-8.3.1.tgz#dccbc839b94877997536c356380eff7325395cfb"
+  integrity sha512-fA7clol2IP/56yq6vkMTR+4URF1nGjV82Wx6Rf09EsqD4tkzMAvEaqYxVFCavJm/1xaRga/oD55K+4FtuXwQOQ==
   dependencies:
     "@types/prettier" "^2.1.1"
     debug "^4.3.1"
