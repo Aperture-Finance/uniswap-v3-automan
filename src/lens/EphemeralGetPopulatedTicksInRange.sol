@@ -3,11 +3,10 @@ pragma solidity ^0.8.0;
 
 import "./TickLens.sol";
 
-/// @notice A lens that fetches chunks of tick data for a Uniswap v3 pool without deployment
+/// @notice A lens that fetches chunks of tick data in a range for a Uniswap v3 pool without deployment
 /// @author Aperture Finance
-/// @dev The return data can be accessed externally by `eth_call` without a `to` address or internally by
-/// `address(new EphemeralGetPopulatedTicksInWord(pool, tickBitmapIndex)).code`, and decoded by
-/// `abi.decode(data, (PopulatedTick[]))`
+/// @dev The return data can be accessed externally by `eth_call` without a `to` address or internally by catching the
+/// revert data, and decoded by `abi.decode(data, (PopulatedTick[]))`
 contract EphemeralGetPopulatedTicksInRange is TickLens {
     constructor(V3PoolCallee pool, int24 tickLower, int24 tickUpper) {
         PopulatedTick[] memory populatedTicks = getPopulatedTicksInRange(pool, tickLower, tickUpper);
