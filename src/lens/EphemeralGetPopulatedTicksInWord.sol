@@ -9,7 +9,7 @@ import "./TickLens.sol";
 /// `address(new EphemeralGetPopulatedTicksInWord(pool, tickBitmapIndex)).code`, and decoded by
 /// `abi.decode(data, (PopulatedTick[]))`
 contract EphemeralGetPopulatedTicksInWord is TickLens {
-    constructor(V3PoolCallee pool, int16 tickBitmapIndex) {
+    constructor(V3PoolCallee pool, int16 tickBitmapIndex) payable {
         PopulatedTick[] memory populatedTicks = getPopulatedTicksInWord(pool, tickBitmapIndex);
         bytes memory returnData = abi.encode(populatedTicks);
         assembly ("memory-safe") {
@@ -25,7 +25,7 @@ contract EphemeralGetPopulatedTicksInWord is TickLens {
     function getPopulatedTicksInWord(
         V3PoolCallee pool,
         int16 tickBitmapIndex
-    ) public view returns (PopulatedTick[] memory populatedTicks) {
+    ) public payable returns (PopulatedTick[] memory populatedTicks) {
         // calculate the number of populated ticks
         uint256 numTicks = getNumberOfInitializedTicks(pool, tickBitmapIndex);
         // fetch populated tick data

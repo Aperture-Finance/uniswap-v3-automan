@@ -8,7 +8,7 @@ import "./TickLens.sol";
 /// @dev The return data can be accessed externally by `eth_call` without a `to` address or internally by catching the
 /// revert data, and decoded by `abi.decode(data, (PopulatedTick[]))`
 contract EphemeralGetPopulatedTicksInRange is TickLens {
-    constructor(V3PoolCallee pool, int24 tickLower, int24 tickUpper) {
+    constructor(V3PoolCallee pool, int24 tickLower, int24 tickUpper) payable {
         PopulatedTick[] memory populatedTicks = getPopulatedTicksInRange(pool, tickLower, tickUpper);
         bytes memory returnData = abi.encode(populatedTicks);
         assembly ("memory-safe") {
@@ -25,7 +25,7 @@ contract EphemeralGetPopulatedTicksInRange is TickLens {
         V3PoolCallee pool,
         int24 tickLower,
         int24 tickUpper
-    ) public view returns (PopulatedTick[] memory populatedTicks) {
+    ) public payable returns (PopulatedTick[] memory populatedTicks) {
         require(tickLower <= tickUpper);
         int24 tickSpacing = pool.tickSpacing();
         int16 wordPosLower;
