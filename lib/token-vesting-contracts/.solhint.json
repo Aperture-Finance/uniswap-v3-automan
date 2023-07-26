@@ -1,7 +1,0 @@
-{
-  "extends": "solhint:default",
-  "rules": {
-    "const-name-snakecase": "warn",
-    "ordering": "error"
-  }
-}
