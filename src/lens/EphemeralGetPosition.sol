@@ -8,7 +8,7 @@ import "./PositionLens.sol";
 /// @dev The return data can be accessed externally by `eth_call` without a `to` address or internally by
 /// `address(new EphemeralGetPosition(npm, tokenId)).code`, and decoded by `abi.decode(data, (PositionState))`
 contract EphemeralGetPosition is PositionLens {
-    constructor(INPM npm, uint256 tokenId) {
+    constructor(INPM npm, uint256 tokenId) payable {
         PositionState memory pos = getPosition(npm, tokenId);
         bytes memory returnData = abi.encode(pos);
         assembly ("memory-safe") {
@@ -19,7 +19,7 @@ contract EphemeralGetPosition is PositionLens {
     /// @dev Public function to expose the abi for easier decoding using TypeChain
     /// @param npm Nonfungible position manager
     /// @param tokenId Token ID of the position
-    function getPosition(INPM npm, uint256 tokenId) public view returns (PositionState memory state) {
+    function getPosition(INPM npm, uint256 tokenId) public payable returns (PositionState memory state) {
         peek(npm, tokenId, state);
     }
 }

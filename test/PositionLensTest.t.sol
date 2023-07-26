@@ -5,7 +5,7 @@ import "src/lens/EphemeralAllPositions.sol";
 import "src/lens/EphemeralGetPosition.sol";
 import "./uniswap/UniBase.sol";
 
-contract EphemeralPositionLensTest is UniBase {
+contract PositionLensTest is UniBase {
     uint256 internal lastTokenId;
 
     function setUp() public override {
