@@ -27,7 +27,8 @@ contract EphemeralGetPopulatedTicksInRange is TickLens {
         int24 tickUpper
     ) public payable returns (PopulatedTick[] memory populatedTicks) {
         require(tickLower <= tickUpper);
-        int24 tickSpacing = pool.tickSpacing();
+        // checks that the pool exists
+        int24 tickSpacing = IUniswapV3Pool(V3PoolCallee.unwrap(pool)).tickSpacing();
         int16 wordPosLower;
         int16 wordPosUpper;
         {
