@@ -557,10 +557,9 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
     /// @param r Half of the ECDSA signature pair
     /// @param s Half of the ECDSA signature pair
     function selfPermitIfNecessary(uint256 tokenId, uint256 deadline, uint8 v, bytes32 r, bytes32 s) internal {
-        if (
-            !(NPMCaller.getApproved(npm, tokenId) == address(this) ||
-                NPMCaller.isApprovedForAll(npm, NPMCaller.ownerOf(npm, tokenId), address(this)))
-        ) NPMCaller.permit(npm, address(this), tokenId, deadline, v, r, s);
+        if (NPMCaller.getApproved(npm, tokenId) == address(this)) return;
+        if (NPMCaller.isApprovedForAll(npm, NPMCaller.ownerOf(npm, tokenId), address(this))) return;
+        NPMCaller.permit(npm, address(this), tokenId, deadline, v, r, s);
     }
 
     /************************************************

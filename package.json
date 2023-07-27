@@ -1,6 +1,6 @@
 {
   "name": "uniswap_v3_automan",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Aperture Finance",
   "license": "BUSL-1.1",
   "scripts": {
@@ -14,7 +14,7 @@
     "typechain": "hardhat typechain"
   },
   "dependencies": {
-    "@aperture_finance/uni-v3-lib": "^1.1.1",
+    "@aperture_finance/uni-v3-lib": "^1.1.2",
     "@openzeppelin/contracts": "^4.9.2",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.3",

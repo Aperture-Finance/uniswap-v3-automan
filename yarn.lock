@@ -2,15 +2,15 @@
 # yarn lockfile v1
 
 
-"@aperture_finance/uni-v3-lib@^1.1.1":
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/@aperture_finance/uni-v3-lib/-/uni-v3-lib-1.1.1.tgz#87e435d443f475602eaf128b9c285679cdac034f"
-  integrity sha512-goprEflsg/kOUqo2oon22UYclhhQSukOJy/tcnNGLiD4y4IaeYp/6XWcM5eLoV8GBF/zZlKGWa6X40TfIJ+ngw==
+"@aperture_finance/uni-v3-lib@^1.1.2":
+  version "1.1.2"
+  resolved "https://registry.yarnpkg.com/@aperture_finance/uni-v3-lib/-/uni-v3-lib-1.1.2.tgz#da0b559811873df0345e5f9970381ba3778ebf77"
+  integrity sha512-mOOE7nkTWxn8f2uJIrElFrWBq/XoYSRzzpNSryScuF+ppELdubXfpHn09DAG+USOK/cf8Qk4fpv9OzjkV+p/kw==
   dependencies:
     "@openzeppelin/contracts" "^4.9.2"
     "@uniswap/v3-core" "^1.0.1"
     "@uniswap/v3-periphery" "^1.4.3"
-    solady "^0.0.107"
+    solady "^0.0.110"
 
 "@chainsafe/as-sha256@^0.3.1":
   version "0.3.1"
@@ -2415,11 +2415,6 @@ sha.js@^2.4.0, sha.js@^2.4.8:
   dependencies:
     inherits "^2.0.1"
     safe-buffer "^5.0.1"
-
-solady@^0.0.107:
-  version "0.0.107"
-  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.107.tgz#b9b218b1e16f804714e4f6d41a75ac50dec2345b"
-  integrity sha512-etZ9XZ5IlHiLaE3itu6w7gROVVO7s2bBUfuCw/hMx9u2Jpv8rYv7l1SYAdAiBT6WKbpwBvp8PPLtIcoLKmIFKQ==
 
 solady@^0.0.110:
   version "0.0.110"

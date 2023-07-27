@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.0;
 
-import {PoolCaller, V3PoolCallee} from "@aperture_finance/uni-v3-lib/src/PoolCaller.sol";
+import {IUniswapV3Pool, PoolCaller, V3PoolCallee} from "@aperture_finance/uni-v3-lib/src/PoolCaller.sol";
 import {TickBitmap} from "@aperture_finance/uni-v3-lib/src/TickBitmap.sol";
 
 /// @title Tick Lens contract

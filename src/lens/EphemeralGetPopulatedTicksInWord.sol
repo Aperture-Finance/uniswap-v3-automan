@@ -28,8 +28,9 @@ contract EphemeralGetPopulatedTicksInWord is TickLens {
     ) public payable returns (PopulatedTick[] memory populatedTicks) {
         // calculate the number of populated ticks
         uint256 numTicks = getNumberOfInitializedTicks(pool, tickBitmapIndex);
+        // checks that the pool exists
+        int24 tickSpacing = IUniswapV3Pool(V3PoolCallee.unwrap(pool)).tickSpacing();
         // fetch populated tick data
-        int24 tickSpacing = pool.tickSpacing();
         populatedTicks = new PopulatedTick[](numTicks);
         populateTicksInWord(pool, tickBitmapIndex, tickSpacing, populatedTicks, 0);
     }
