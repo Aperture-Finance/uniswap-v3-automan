@@ -240,12 +240,12 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
         return NPMCaller.burn(npm, tokenId);
     }
 
-    /// @notice Collects tokens owed to a specific position
+    /// @notice Collects tokens owed for a given token ID to this contract
     /// @param tokenId The ID of the NFT for which tokens are being collected
     /// @return amount0 The amount of fees collected in token0
     /// @return amount1 The amount of fees collected in token1
-    function _collect(uint256 tokenId, address recipient) private returns (uint256 amount0, uint256 amount1) {
-        return NPMCaller.collect(npm, tokenId, recipient);
+    function _collect(uint256 tokenId) private returns (uint256 amount0, uint256 amount1) {
+        return NPMCaller.collect(npm, tokenId, address(this));
     }
 
     /// @dev Internal function to mint and refund
@@ -307,7 +307,7 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
         uint256 feePips
     ) private returns (uint256, uint256) {
         // Collect the tokens owed then deduct transaction fees
-        (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId, address(this));
+        (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId);
         // Calculations outside mulDiv won't overflow.
         unchecked {
             uint256 fee0 = amount0Principal.mulDiv(feePips, MAX_FEE_PIPS);
@@ -340,7 +340,7 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
         uint128 liquidityDelta,
         uint256 feePips
     ) private returns (uint256, uint256) {
-        (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId, address(this));
+        (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId);
         // Calculations outside mulDiv won't overflow.
         unchecked {
             uint256 fee0;

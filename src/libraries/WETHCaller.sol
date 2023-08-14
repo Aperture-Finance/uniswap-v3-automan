@@ -3,7 +3,7 @@
 // https://blog.soliditylang.org/2021/09/27/user-defined-value-types/
 pragma solidity ^0.8.8;
 
-import "solmate/src/tokens/WETH.sol";
+import {WETH} from "solady/src/tokens/WETH.sol";
 
 type WETHCallee is address;
 using WETHCaller for WETHCallee global;
