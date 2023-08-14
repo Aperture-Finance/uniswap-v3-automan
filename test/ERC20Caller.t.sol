@@ -39,11 +39,7 @@ contract ERC20CallerTest is Test {
     function testFuzz_BalanceOf(uint256 amount, address owner) public {
         address token = address(testToken);
         deal(token, owner, amount);
-        assertEq(
-            IERC20(token).balanceOf(owner),
-            ERC20Callee.wrap(token).balanceOf(owner),
-            "balanceOf mismatch"
-        );
+        assertEq(IERC20(token).balanceOf(owner), ERC20Callee.wrap(token).balanceOf(owner), "balanceOf mismatch");
     }
 
     function test_Allowance() public {
