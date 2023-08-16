@@ -8,6 +8,7 @@ import "./TickLens.sol";
 /// @dev The return data can be accessed externally by `eth_call` without a `to` address or internally by catching the
 /// revert data, and decoded by `abi.decode(data, (PopulatedTick[]))`
 contract EphemeralGetPopulatedTicksInRange is TickLens {
+    // slither-disable-next-line locked-ether
     constructor(V3PoolCallee pool, int24 tickLower, int24 tickUpper) payable {
         PopulatedTick[] memory populatedTicks = getPopulatedTicksInRange(pool, tickLower, tickUpper);
         bytes memory returnData = abi.encode(populatedTicks);
@@ -21,6 +22,7 @@ contract EphemeralGetPopulatedTicksInRange is TickLens {
     /// @param tickLower The lower tick boundary of the populated ticks to fetch
     /// @param tickUpper The upper tick boundary of the populated ticks to fetch
     /// @return populatedTicks An array of tick data for the given word in the tick bitmap
+    // slither-disable-next-line locked-ether
     function getPopulatedTicksInRange(
         V3PoolCallee pool,
         int24 tickLower,

@@ -9,6 +9,7 @@ import "./TickLens.sol";
 /// `address(new EphemeralGetPopulatedTicksInWord(pool, tickBitmapIndex)).code`, and decoded by
 /// `abi.decode(data, (PopulatedTick[]))`
 contract EphemeralGetPopulatedTicksInWord is TickLens {
+    // slither-disable-next-line locked-ether
     constructor(V3PoolCallee pool, int16 tickBitmapIndex) payable {
         PopulatedTick[] memory populatedTicks = getPopulatedTicksInWord(pool, tickBitmapIndex);
         bytes memory returnData = abi.encode(populatedTicks);
@@ -22,6 +23,7 @@ contract EphemeralGetPopulatedTicksInWord is TickLens {
     /// @param tickBitmapIndex The index of the word in the tick bitmap for which to parse the bitmap and
     /// fetch all the populated ticks
     /// @return populatedTicks An array of tick data for the given word in the tick bitmap
+    // slither-disable-next-line locked-ether
     function getPopulatedTicksInWord(
         V3PoolCallee pool,
         int16 tickBitmapIndex
