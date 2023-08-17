@@ -116,7 +116,8 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
                     // revert if `router` is `NonfungiblePositionManager`
                     if (router == address(npm)) revert InvalidSwapRouter();
                     // revert if `router` is an ERC20 or not a contract
-                    (bool success, ) = router.call(abi.encodeWithSelector(IERC20.approve.selector, address(npm), 0));
+                    //slither-disable-next-line reentrancy-no-eth
+                    (bool success, ) = router.call(abi.encodeCall(IERC20.approve, (address(npm), 0)));
                     if (success) revert InvalidSwapRouter();
                     isWhiteListedSwapRouter[router] = true;
                 } else {

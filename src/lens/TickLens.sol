@@ -52,6 +52,7 @@ abstract contract TickLens {
         // fetch bitmap
         uint256 bitmap = pool.tickBitmap(tickBitmapIndex);
         for (uint256 bitPos; bitPos < 256; ++bitPos) {
+            //slither-disable-next-line incorrect-shift
             if (bitmap & (1 << bitPos) != 0) {
                 int24 tick;
                 assembly {
