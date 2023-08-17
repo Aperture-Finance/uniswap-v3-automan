@@ -44,8 +44,11 @@ contract DeployAutoman is Script {
         bytes memory encodedArguments = abi.encode(params.npm, msgSender);
         // Concatenate init code with encoded arguments
         bytes memory initCode = bytes.concat(type(UniV3Automan).creationCode, encodedArguments);
+        bytes32 initCodeHash = keccak256(initCode);
+        console2.log("initCodeHash:");
+        console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
-        UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(salt, keccak256(initCode))));
+        UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(salt, initCodeHash)));
 
         // Deploy automan
         create2deployer.deploy(0, salt, initCode);
