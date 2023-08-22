@@ -2,17 +2,19 @@ pragma solidity ^0.8.19;
 
 import {Base} from "./Base.t.sol";
 
-import {ERC20, SafeTransferLib, WETH as IWETH} from "solmate/src/tokens/WETH.sol";
+import {WETH as IWETH} from "solady/src/tokens/WETH.sol";
+import "solady/src/utils/SafeTransferLib.sol";
 import {PoolAddress} from "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
 import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
 import {UniV3Automan} from "../../src/UniV3Automan.sol";
 import "@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolImmutables.sol";
 import "@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
+import "lib/forge-std/src/interfaces/IERC20.sol";
 
 import {console} from "lib/forge-std/src/console.sol";
 
 contract UserFundsInvariant is Base {
-    using SafeTransferLib for ERC20;
+    // using SafeTransferLib for IERC20;
 
     uint setFeeLimit = 100;
 
@@ -99,8 +101,8 @@ contract UserFundsInvariant is Base {
 
         deal(amount0, amount1);
 
-        ERC20(token0).safeApprove(address(automan), type(uint256).max);
-        ERC20(token1).safeApprove(address(automan), type(uint256).max);
+        IERC20(token0).approve(address(automan), type(uint256).max);
+        IERC20(token1).approve(address(automan), type(uint256).max);
 
         (
             uint256 tokenId,
@@ -136,8 +138,8 @@ contract UserFundsInvariant is Base {
         npm.setApprovalForAll(address(automan), true);
 
         uint beforeNFTBalance = npm.balanceOf(user2);
-        uint beforeToken0Balance = ERC20(token0).balanceOf(user2);
-        uint beforeToken1Balance = ERC20(token1).balanceOf(user2);
+        uint beforeToken0Balance = IERC20(token0).balanceOf(user2);
+        uint beforeToken1Balance = IERC20(token1).balanceOf(user2);
         uint beforeEthBalance = user2.balance;
 
         (uint __amount0, uint __amount1) = automan.removeLiquidity(
@@ -159,8 +161,8 @@ contract UserFundsInvariant is Base {
         );
 
         require(
-            ERC20(token0).balanceOf(user2) > beforeToken0Balance ||
-                ERC20(token1).balanceOf(user2) > beforeToken1Balance ||
+            IERC20(token0).balanceOf(user2) > beforeToken0Balance ||
+                IERC20(token1).balanceOf(user2) > beforeToken1Balance ||
                 user2.balance > beforeEthBalance,
             "Didnt get back any funds"
         );
@@ -183,20 +185,20 @@ contract UserFundsInvariant is Base {
         );
 
         deal(amount0, amount1);
-        ERC20(token0).transfer(recipient, amount0);
-        ERC20(token1).transfer(recipient, amount1);
+        IERC20(token0).transfer(recipient, amount0);
+        IERC20(token1).transfer(recipient, amount1);
 
         vm.startPrank(recipient);
 
         uint beforeNFTBalance = npm.balanceOf(recipient);
-        uint beforeToken0Balance = ERC20(token0).balanceOf(recipient);
-        uint beforeToken1Balance = ERC20(token1).balanceOf(recipient);
+        uint beforeToken0Balance = IERC20(token0).balanceOf(recipient);
+        uint beforeToken1Balance = IERC20(token1).balanceOf(recipient);
 
         require(beforeToken0Balance == amount0, "deal amount0 failed");
         require(beforeToken1Balance == amount1, "deal amount1 failed");
 
-        ERC20(token0).safeApprove(address(automan), type(uint256).max);
-        ERC20(token1).safeApprove(address(automan), type(uint256).max);
+        IERC20(token0).approve(address(automan), type(uint256).max);
+        IERC20(token1).approve(address(automan), type(uint256).max);
 
         INPM.MintParams memory params = INPM.MintParams({
             token0: token0,
@@ -245,8 +247,8 @@ contract UserFundsInvariant is Base {
             beforeToken1Balance,
             0,
             npm.balanceOf(recipient),
-            ERC20(token0).balanceOf(recipient),
-            ERC20(token1).balanceOf(recipient),
+            IERC20(token0).balanceOf(recipient),
+            IERC20(token1).balanceOf(recipient),
             0,
             0,
             0
@@ -265,8 +267,8 @@ contract UserFundsInvariant is Base {
         npm.setApprovalForAll(address(automan), true);
 
         uint beforeNFTBalance = npm.balanceOf(target);
-        uint beforeToken0Balance = ERC20(token0).balanceOf(target);
-        uint beforeToken1Balance = ERC20(token1).balanceOf(target);
+        uint beforeToken0Balance = IERC20(token0).balanceOf(target);
+        uint beforeToken1Balance = IERC20(token1).balanceOf(target);
         uint beforeEthBalance = target.balance;
 
         (uint __amount0, uint __amount1) = automan.removeLiquidity(
@@ -290,8 +292,8 @@ contract UserFundsInvariant is Base {
                 beforeToken1Balance,
                 beforeEthBalance,
                 npm.balanceOf(target),
-                ERC20(token0).balanceOf(target),
-                ERC20(token1).balanceOf(target),
+                IERC20(token0).balanceOf(target),
+                IERC20(token1).balanceOf(target),
                 target.balance,
                 0,
                 0
@@ -320,7 +322,7 @@ contract UserFundsInvariant is Base {
         npm.setApprovalForAll(address(automan), true);
 
         uint beforeNFTBalance = npm.balanceOf(target);
-        uint beforeToken0Balance = ERC20(token0).balanceOf(target);
+        uint beforeToken0Balance = IERC20(token0).balanceOf(target);
         uint beforeToken1Balance = target.balance;
         uint beforeEthBalance = target.balance;
 
@@ -347,8 +349,8 @@ contract UserFundsInvariant is Base {
                 beforeToken1Balance,
                 beforeEthBalance,
                 npm.balanceOf(target),
-                ERC20(token0).balanceOf(target),
-                ERC20(token1).balanceOf(target),
+                IERC20(token0).balanceOf(target),
+                IERC20(token1).balanceOf(target),
                 target.balance,
                 0,
                 0
@@ -593,8 +595,8 @@ contract UserFundsInvariant is Base {
         npm.setApprovalForAll(address(automan), true);
 
         uint beforeNFTBalance = npm.balanceOf(target);
-        uint beforeToken0Balance = ERC20(token0).balanceOf(target);
-        uint beforeToken1Balance = ERC20(token1).balanceOf(target);
+        uint beforeToken0Balance = IERC20(token0).balanceOf(target);
+        uint beforeToken1Balance = IERC20(token1).balanceOf(target);
         uint beforeEthBalance = target.balance;
 
         (uint __amount0, uint __amount1) = automan.decreaseLiquidity(
@@ -620,8 +622,8 @@ contract UserFundsInvariant is Base {
                 beforeToken1Balance,
                 beforeEthBalance,
                 npm.balanceOf(target),
-                ERC20(token0).balanceOf(target),
-                ERC20(token1).balanceOf(target),
+                IERC20(token0).balanceOf(target),
+                IERC20(token1).balanceOf(target),
                 target.balance,
                 prevLiquidity,
                 newLiquidity
@@ -664,8 +666,8 @@ contract UserFundsInvariant is Base {
         npm.setApprovalForAll(address(automan), true);
 
         uint beforeNFTBalance = npm.balanceOf(target);
-        uint beforeToken0Balance = ERC20(token0).balanceOf(target);
-        uint beforeToken1Balance = ERC20(token1).balanceOf(target);
+        uint beforeToken0Balance = IERC20(token0).balanceOf(target);
+        uint beforeToken1Balance = IERC20(token1).balanceOf(target);
         uint beforeEthBalance = target.balance;
 
         automan.decreaseLiquiditySingle(
@@ -693,8 +695,8 @@ contract UserFundsInvariant is Base {
                 beforeToken1Balance,
                 beforeEthBalance,
                 npm.balanceOf(target),
-                ERC20(token0).balanceOf(target),
-                ERC20(token1).balanceOf(target),
+                IERC20(token0).balanceOf(target),
+                IERC20(token1).balanceOf(target),
                 target.balance,
                 prevLiquidity,
                 newLiquidity

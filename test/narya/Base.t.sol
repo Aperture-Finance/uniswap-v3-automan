@@ -7,7 +7,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolImmutables.sol";
 import "@uniswap/v3-core/contracts/interfaces/pool/IUniswapV3PoolState.sol";
-import {ERC20, SafeTransferLib, WETH as IWETH} from "solmate/src/tokens/WETH.sol";
+import {WETH as IWETH} from "solady/src/tokens/WETH.sol";
+import "solady/src/utils/SafeTransferLib.sol";
 import {PoolAddress} from "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
 import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
 import {UniV3Automan} from "../../src/UniV3Automan.sol";
@@ -15,7 +16,7 @@ import "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import "../../src/libraries/OptimalSwap.sol";
 
 contract Base is PTest {
-    using SafeTransferLib for ERC20;
+    // using SafeTransferLib for IERC20;
     using TickMath for int24;
     using UnsafeMath for uint160;
 
@@ -173,8 +174,8 @@ contract Base is PTest {
         uint256 amount1Desired
     ) internal view returns (uint256, uint256) {
         address _pool = pool;
-        uint256 balance0 = ERC20(token0).balanceOf(_pool);
-        uint256 balance1 = ERC20(token1).balanceOf(_pool);
+        uint256 balance0 = IERC20(token0).balanceOf(_pool);
+        uint256 balance1 = IERC20(token1).balanceOf(_pool);
         amount0Desired = bound(amount0Desired, 0, balance0 / 10);
         amount1Desired = bound(amount1Desired, 0, balance1 / 10);
         if (
@@ -197,8 +198,8 @@ contract Base is PTest {
 
     function deal(uint256 amount0, uint256 amount1) internal {
         address _WETH = WETH;
-        uint256 prevTotSup = ERC20(_WETH).totalSupply();
-        uint256 prevBal = ERC20(_WETH).balanceOf(address(this));
+        uint256 prevTotSup = IERC20(_WETH).totalSupply();
+        uint256 prevBal = IERC20(_WETH).balanceOf(address(this));
         if (token0 == _WETH) {
             deal(_WETH, prevTotSup + amount0 - prevBal);
             deal(_WETH, address(this), amount0);
