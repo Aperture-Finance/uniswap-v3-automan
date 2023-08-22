@@ -54,12 +54,12 @@ abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallbac
         bool zeroForOne
     ) internal returns (uint256 amountOut) {
         if (amountIn != 0) {
-            uint256 valueBeforePoolKey;
+            uint256 wordBeforePoolKey;
             bytes memory data;
             assembly ("memory-safe") {
                 // Equivalent to `data = abi.encode(poolKey)`
                 data := sub(poolKey, 0x20)
-                valueBeforePoolKey := mload(data)
+                wordBeforePoolKey := mload(data)
                 mstore(data, 0x60)
             }
             uint160 sqrtPriceLimitX96;
@@ -78,8 +78,8 @@ abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallbac
                 amountOut = 0 - zeroForOne.ternary(uint256(amount1Delta), uint256(amount0Delta));
             }
             assembly ("memory-safe") {
-                // Restore the memory slot before `poolKey`
-                mstore(data, valueBeforePoolKey)
+                // Restore the memory word before `poolKey`
+                mstore(data, wordBeforePoolKey)
             }
         }
     }
@@ -137,7 +137,9 @@ abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallbac
         // Reset approval
         tokenIn.safeApprove(router, 0);
         uint256 balanceAfter = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
-        amountOut = balanceAfter - balanceBefore;
+        unchecked {
+            amountOut = balanceAfter - balanceBefore;
+        }
     }
 
     /// @dev Swap tokens to the optimal ratio to add liquidity in the same pool

@@ -14,7 +14,7 @@ contract DeployAutoman is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant salt = 0xe0d8c413c432c0cc20afa284775c36424dfc713325eae5f2a99a0a932efb5a74;
+    bytes32 internal constant salt = 0x5e05bd683b7817ee2a6b1d3cd7d8a34df4ee1696cf39a2a08878c523116daae7;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
     function readInput(string memory input) internal view returns (string memory) {
@@ -44,8 +44,11 @@ contract DeployAutoman is Script {
         bytes memory encodedArguments = abi.encode(params.npm, msgSender);
         // Concatenate init code with encoded arguments
         bytes memory initCode = bytes.concat(type(UniV3Automan).creationCode, encodedArguments);
+        bytes32 initCodeHash = keccak256(initCode);
+        console2.log("initCodeHash:");
+        console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
-        UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(salt, keccak256(initCode))));
+        UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(salt, initCodeHash)));
 
         // Deploy automan
         create2deployer.deploy(0, salt, initCode);

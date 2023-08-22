@@ -13,10 +13,13 @@ const config: HardhatUserConfig = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 4294967295,
+        runs: 4294967295
       },
       viaIR: true,
       evmVersion: "paris",
+      metadata: {
+        bytecodeHash: "none"
+      }
     }
   } as SolidityUserConfig,
   typechain: {
