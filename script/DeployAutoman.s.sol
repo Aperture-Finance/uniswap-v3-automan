@@ -3,6 +3,7 @@ pragma solidity ^0.8.18;
 
 import "forge-std/Script.sol";
 import "../src/UniV3Automan.sol";
+import "../src/RouterProxy.sol";
 
 contract DeployAutoman is Script {
     struct DeployParams {
@@ -45,11 +46,23 @@ contract DeployAutoman is Script {
         // Concatenate init code with encoded arguments
         bytes memory initCode = bytes.concat(type(UniV3Automan).creationCode, encodedArguments);
         bytes32 initCodeHash = keccak256(initCode);
-        console2.log("initCodeHash:");
+        console2.log("Automan initCodeHash:");
         console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
         UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(salt, initCodeHash)));
 
+        if (address(automan).code.length != 0) {
+            console2.log("Automan already deployed at: %s", address(automan));
+            bytes32 routerSalt = 0x862e41240a461e611c6c023e3cf74c29b2ab80b8e2b2539de1b8b1f096922723;
+            RouterProxy routerProxy = RouterProxy(
+                create2deployer.computeAddress(routerSalt, keccak256(type(RouterProxy).creationCode))
+            );
+            // Deploy routerProxy
+            create2deployer.deploy(0, routerSalt, type(RouterProxy).creationCode);
+            console2.log("RouterProxy deployed at: %s", address(routerProxy));
+            vm.stopBroadcast();
+            return;
+        }
         // Deploy automan
         create2deployer.deploy(0, salt, initCode);
 
