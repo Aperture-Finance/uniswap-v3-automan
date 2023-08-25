@@ -119,7 +119,8 @@ contract UniHandler is UniBase {
         int24 tickLower,
         int24 tickUpper,
         uint256 amount0Desired,
-        uint256 amount1Desired
+        uint256 amount1Desired,
+        bytes memory swapData
     ) internal returns (uint256 tokenId) {
         deal(amount0Desired, amount1Desired);
         token0.safeApprove(address(automan), type(uint256).max);
@@ -140,7 +141,7 @@ contract UniHandler is UniBase {
                     recipient: recipient,
                     deadline: block.timestamp
                 }),
-                new bytes(0)
+                swapData
             )
         returns (uint256 _tokenId, uint128, uint256, uint256) {
             tokenId = _tokenId;
@@ -376,7 +377,7 @@ contract UniHandler is UniBase {
         if (recipient.code.length != 0) return 0;
         (tickLower, tickUpper) = prepTicks(tickLower, tickUpper);
         (amount0Desired, amount1Desired) = prepAmounts(amount0Desired, amount1Desired);
-        tokenId = _mintOptimal(recipient, tickLower, tickUpper, amount0Desired, amount1Desired);
+        tokenId = _mintOptimal(recipient, tickLower, tickUpper, amount0Desired, amount1Desired, new bytes(0));
         if (tokenId != 0) {
             _tokenIds.add(tokenId);
             countCall("mintOptimal");

@@ -126,6 +126,7 @@ contract SwapRouterTest is UniBase {
         tokenIn.safeApprove(address(router), amountSpecified);
         uint256 amountOut = router.poolSwap(poolKey, pool, amountSpecified, zeroForOne);
         assertSwapSuccess(zeroForOne, amountOut);
+        assertZeroBalance(address(router));
     }
 
     /// @dev Test a direct pool swap
@@ -135,6 +136,7 @@ contract SwapRouterTest is UniBase {
         tokenIn.safeApprove(address(router), amountSpecified);
         uint256 amountOut = router.poolSwap(poolKey, pool, amountSpecified, zeroForOne);
         assertSwapSuccess(zeroForOne, amountOut);
+        assertZeroBalance(address(router));
     }
 
     /// @dev Test a router swap
@@ -163,6 +165,7 @@ contract SwapRouterTest is UniBase {
             abi.encodePacked(v3SwapRouter, data)
         );
         assertSwapSuccess(zeroForOne, amountOut);
+        assertZeroBalance(address(router));
     }
 
     /// @dev Test optimal swap with the same pool
@@ -186,6 +189,7 @@ contract SwapRouterTest is UniBase {
             amount1Desired
         );
         if (mint(address(this), amount0, amount1, tickLower, tickUpper)) assertLittleLeftover();
+        assertZeroBalance(address(router));
     }
 
     /// @dev Test optimal swap with a router
@@ -238,5 +242,6 @@ contract SwapRouterTest is UniBase {
             );
             if (mint(address(this), amount0, amount1, tickLower, tickUpper)) assertLittleLeftover();
         }
+        assertZeroBalance(address(router));
     }
 }

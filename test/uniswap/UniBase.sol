@@ -316,6 +316,12 @@ abstract contract UniBase is Test, Helper, IERC721Receiver, IERC1271, IUniswapV3
         );
     }
 
+    function assertZeroBalance(address target) internal {
+        assertEq(target.balance, 0, "ETH balance");
+        assertEq(IERC20(token0).balanceOf(target), 0, "token0 balance");
+        assertEq(IERC20(token1).balanceOf(target), 0, "token1 balance");
+    }
+
     /************************************************
      *  ACTIONS
      ***********************************************/

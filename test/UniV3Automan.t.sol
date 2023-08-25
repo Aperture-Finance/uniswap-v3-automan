@@ -190,9 +190,7 @@ contract UniV3AutomanTest is UniHandler {
      ***********************************************/
 
     function invariantZeroBalance() public {
-        assertEq(address(automan).balance, 0, "ETH balance");
-        assertEq(IERC20(token0).balanceOf(address(automan)), 0, "token0 balance");
-        assertEq(IERC20(token1).balanceOf(address(automan)), 0, "token1 balance");
+        assertZeroBalance(address(automan));
     }
 
     /// @dev Test minting a v3 LP position using optimal swap with fixed inputs for gas comparison purpose
@@ -262,7 +260,14 @@ contract UniV3AutomanTest is UniHandler {
     /// @dev Test minting with built-in optimal swap
     function test_MintOptimal() public {
         (uint256 amount0Desired, uint256 amount1Desired, int24 tickLower, int24 tickUpper) = fixedInputs();
-        uint256 tokenId = _mintOptimal(address(this), tickLower, tickUpper, amount0Desired, amount1Desired);
+        uint256 tokenId = _mintOptimal(
+            address(this),
+            tickLower,
+            tickUpper,
+            amount0Desired,
+            amount1Desired,
+            new bytes(0)
+        );
         if (verifyTokenId(tokenId)) assertLittleLeftover();
     }
 

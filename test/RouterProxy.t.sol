@@ -50,5 +50,6 @@ contract RouterProxyTest is UniBase {
         );
         assertTrue(success, "swap failed");
         assertSwapSuccess(zeroForOne, balanceBefore - IERC20(tokenOut).balanceOf(address(pool)));
+        assertZeroBalance(address(routerProxy));
     }
 }
