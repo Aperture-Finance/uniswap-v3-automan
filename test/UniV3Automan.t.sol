@@ -53,6 +53,7 @@ contract UniV3AutomanTest is UniHandler {
         (, , int24 tickLower, int24 tickUpper) = fixedInputs();
         thisTokenId = preMint(address(this), tickLower, tickUpper);
         userTokenId = preMint(user, tickLower, tickUpper);
+        deal(address(this), 0);
     }
 
     function invariant_callSummary() public view {
@@ -190,9 +191,12 @@ contract UniV3AutomanTest is UniHandler {
      ***********************************************/
 
     function invariantZeroBalance() public {
-        assertEq(address(automan).balance, 0, "ETH balance");
-        assertEq(IERC20(token0).balanceOf(address(automan)), 0, "token0 balance");
-        assertEq(IERC20(token1).balanceOf(address(automan)), 0, "token1 balance");
+        assertZeroBalance(address(automan));
+    }
+
+    function assertBalance() internal {
+        assertZeroBalance(address(automan));
+        assertLittleLeftover();
     }
 
     /// @dev Test minting a v3 LP position using optimal swap with fixed inputs for gas comparison purpose
@@ -256,14 +260,21 @@ contract UniV3AutomanTest is UniHandler {
             IERC20(token1).balanceOf(address(this)),
             sendValue
         );
-        if (verifyTokenId(tokenId)) assertLittleLeftover();
+        if (verifyTokenId(tokenId)) assertBalance();
     }
 
     /// @dev Test minting with built-in optimal swap
     function test_MintOptimal() public {
         (uint256 amount0Desired, uint256 amount1Desired, int24 tickLower, int24 tickUpper) = fixedInputs();
-        uint256 tokenId = _mintOptimal(address(this), tickLower, tickUpper, amount0Desired, amount1Desired);
-        if (verifyTokenId(tokenId)) assertLittleLeftover();
+        (uint256 tokenId, ) = _mintOptimal(
+            address(this),
+            tickLower,
+            tickUpper,
+            amount0Desired,
+            amount1Desired,
+            new bytes(0)
+        );
+        if (verifyTokenId(tokenId)) assertBalance();
     }
 
     /// @dev Should revert when minting with built-in optimal swap and wrong token order
@@ -319,14 +330,14 @@ contract UniV3AutomanTest is UniHandler {
             IERC20(token1).balanceOf(address(this)),
             sendValue
         );
-        if (liquidity != 0) assertLittleLeftover();
+        if (liquidity != 0) assertBalance();
     }
 
     /// @dev Test minting with built-in optimal swap
     function test_IncreaseLiquidityOptimal() public {
         (uint256 amount0Desired, uint256 amount1Desired, , ) = fixedInputs();
         uint128 liquidity = _increaseLiquidityOptimal(thisTokenId, amount0Desired, amount1Desired);
-        if (liquidity != 0) assertLittleLeftover();
+        if (liquidity != 0) assertBalance();
     }
 
     /// @dev Test decreasing liquidity of a v3 LP position

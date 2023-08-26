@@ -290,6 +290,7 @@ abstract contract UniBase is Test, Helper, IERC721Receiver, IERC1271, IUniswapV3
     function assertLittleLeftover() internal {
         uint256 balance0Left = IERC20(token0).balanceOf(address(this));
         uint256 balance1Left = IERC20(token1).balanceOf(address(this));
+        assertLe(address(this).balance, 1e12, "too much eth leftover");
         assertLe(balance0Left, token0Unit / 1e3, "too much token0 leftover");
         assertLe(balance1Left, token1Unit / 1e3, "too much token1 leftover");
     }
@@ -314,6 +315,12 @@ abstract contract UniBase is Test, Helper, IERC721Receiver, IERC1271, IUniswapV3
             amount1 + balance1Before,
             "amount1 mismatch"
         );
+    }
+
+    function assertZeroBalance(address target) internal {
+        assertEq(target.balance, 0, "ETH balance");
+        assertEq(IERC20(token0).balanceOf(target), 0, "token0 balance");
+        assertEq(IERC20(token1).balanceOf(target), 0, "token1 balance");
     }
 
     /************************************************
