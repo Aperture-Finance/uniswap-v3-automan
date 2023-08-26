@@ -12,6 +12,7 @@ contract OptimalSwapTest is UniBase {
         // Test on Optimism since Homora's OptimalSwap is deployed
         chainId = 10;
         super.setUp();
+        deal(address(this), 0);
     }
 
     function test_LiquidityDelta(bool zeroForOne) public {
@@ -101,12 +102,7 @@ contract OptimalSwapTest is UniBase {
 
     function test_AlreadyOptimal() public view {
         (int24 tickLower, int24 tickUpper) = prepTicks();
-        (uint256 amount0, uint256 amount1) = prepAmountsForLiquidity(
-            V3PoolCallee.wrap(pool).liquidity() / 10000,
-            tickLower,
-            tickUpper
-        );
-        OptimalSwap.getOptimalSwap(V3PoolCallee.wrap(pool), tickLower, tickUpper, amount0, amount1);
+        testFuzz_AlreadyOptimal(V3PoolCallee.wrap(pool).liquidity() / 10000, tickLower, tickUpper);
     }
 
     function testFuzz_AlreadyOptimal(uint128 liquidity, int24 tickLower, int24 tickUpper) public view {

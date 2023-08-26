@@ -116,12 +116,8 @@ contract OptimalSwapRouter is UniV3Immutables, Payments, SwapRouter {
                 balance0 := add(balance0, xor(amountOut, diff))
                 balance1 := add(balance1, xor(minusAmountIn, diff))
             }
-            if (balance0 != 0) {
-                token0.safeTransfer(msg.sender, balance0);
-            }
-            if (balance1 != 0) {
-                token1.safeTransfer(msg.sender, balance1);
-            }
+            if (balance0 != 0) token0.safeTransfer(msg.sender, balance0);
+            if (balance1 != 0) token1.safeTransfer(msg.sender, balance1);
         }
     }
 }

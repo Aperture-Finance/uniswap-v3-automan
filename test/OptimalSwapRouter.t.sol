@@ -27,6 +27,7 @@ contract OptimalSwapRouterTest is UniHandler {
         vm.label(address(automan), "UniV3Automan");
         vm.label(address(optimalSwapRouter), "OptimalSwapRouter");
         vm.label(v3SwapRouter, "v3Router");
+        deal(address(this), 0);
     }
 
     function testRevert_OnReceiveETH() public {
@@ -35,31 +36,61 @@ contract OptimalSwapRouterTest is UniHandler {
     }
 
     function test_MintOptimal() public {
-        uint256 amount0Desired = 0 * token0Unit;
-        uint256 amount1Desired = 10000 * token1Unit;
-        int24 tickLower;
-        int24 tickUpper;
-        uint256 amtSwap;
+        int24 multiplier = 100;
+        int24 tick = currentTick();
+        testFuzz_MintOptimal(
+            0 * token0Unit,
+            10000 * token1Unit,
+            tick - multiplier * tickSpacing,
+            tick + multiplier * tickSpacing,
+            1000 * token1Unit
+        );
+    }
+
+    function testFuzz_MintOptimal(
+        uint256 amount0Desired,
+        uint256 amount1Desired,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 amtSwap
+    ) public {
         bool zeroForOne;
         {
-            int24 multiplier = 100;
-            int24 tick = currentTick();
-            (tickLower, tickUpper, amount0Desired, amount1Desired, amtSwap, , zeroForOne) = prepOptimalSwap(
-                tick - multiplier * tickSpacing,
-                tick + multiplier * tickSpacing,
+            uint256 _amtSwap;
+            (tickLower, tickUpper, amount0Desired, amount1Desired, _amtSwap, , zeroForOne) = prepOptimalSwap(
+                tickLower,
+                tickUpper,
                 amount0Desired,
                 amount1Desired
             );
+            amtSwap = bound(amtSwap, 0, _amtSwap);
         }
+        vm.assume(amtSwap != 0);
         uint256 snapshotId = vm.snapshot();
 
-        // swap half of the optimal amount
-        bytes memory swapData = encodeRouterData(tickLower, tickUpper, zeroForOne, amtSwap / 2);
-        _mintOptimal(address(this), tickLower, tickUpper, amount0Desired, amount1Desired, swapData);
+        (, uint128 liquidity) = _mintOptimal(
+            address(this),
+            tickLower,
+            tickUpper,
+            amount0Desired,
+            amount1Desired,
+            encodeRouterData(tickLower, tickUpper, zeroForOne, amtSwap)
+        );
+        vm.assume(liquidity != 0);
         assertLittleLeftover();
-        emit log_named_decimal_uint("balance0Left", IERC20(token0).balanceOf(address(this)), token0Decimals);
-        emit log_named_decimal_uint("balance1Left", IERC20(token1).balanceOf(address(this)), token1Decimals);
         assertZeroBalance(address(optimalSwapRouter));
+
+        vm.revertTo(snapshotId);
+        (, uint128 _liquidity) = _mintOptimal(
+            address(this),
+            tickLower,
+            tickUpper,
+            amount0Desired,
+            amount1Desired,
+            new bytes(0)
+        );
+        uint256 maxDelta = liquidity / 1e3;
+        assertApproxEqAbs(liquidity, _liquidity, ternary(maxDelta > 1e6, maxDelta, 1e6));
     }
 
     function encodeRouterData(
