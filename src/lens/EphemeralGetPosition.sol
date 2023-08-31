@@ -22,6 +22,7 @@ contract EphemeralGetPosition is PositionLens {
     /// @param tokenId Token ID of the position
     // slither-disable-next-line locked-ether
     function getPosition(INPM npm, uint256 tokenId) public payable returns (PositionState memory state) {
+        state.owner = NPMCaller.ownerOf(npm, tokenId);
         peek(npm, tokenId, state);
     }
 }

@@ -29,6 +29,7 @@ contract EphemeralAllPositions is PositionLens {
         unchecked {
             for (uint256 i; i < balance; ++i) {
                 uint256 tokenId = NPMCaller.tokenOfOwnerByIndex(npm, owner, i);
+                positions[i].owner = owner;
                 peek(npm, tokenId, positions[i]);
             }
         }

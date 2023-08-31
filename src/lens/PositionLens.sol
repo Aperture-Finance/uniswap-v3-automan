@@ -22,6 +22,8 @@ struct Slot0 {
 struct PositionState {
     // token ID of the position
     uint256 tokenId;
+    // position's owner
+    address owner;
     // nonfungible position manager's position struct with real-time tokensOwed
     PositionFull position;
     // pool's slot0 struct
