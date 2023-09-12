@@ -18,9 +18,6 @@ verbosity = 2
 ffi = false
 fs_permissions = [{ access = "read", path = "./script" }]
 
-[profile.default.optimizer_details]
-yul = true
-
 [fuzz]
 runs = 256
 seed = "42"
@@ -29,10 +26,6 @@ seed = "42"
 runs = 64
 depth = 16
 fail_on_revert = false
-
-[fmt]
-line_length = 120
-multiline_func_header = 'params_first'
 
 [profile.lite]
 optimizer_runs = 200

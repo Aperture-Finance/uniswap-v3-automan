@@ -14,7 +14,7 @@ abstract contract UniV3Immutables is IUniV3Immutables {
     /// @notice Wrapped ETH
     address payable public immutable override WETH9;
 
-    constructor(INPM nonfungiblePositionManager) {
+    constructor(INPM nonfungiblePositionManager) payable {
         npm = nonfungiblePositionManager;
         factory = nonfungiblePositionManager.factory();
         WETH9 = payable(nonfungiblePositionManager.WETH9());

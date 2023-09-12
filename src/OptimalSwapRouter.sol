@@ -17,7 +17,7 @@ contract OptimalSwapRouter is UniV3Immutables, Payments, SwapRouter {
     using SafeTransferLib for address;
     using TernaryLib for bool;
 
-    constructor(INonfungiblePositionManager npm) UniV3Immutables(npm) {}
+    constructor(INonfungiblePositionManager npm) payable UniV3Immutables(npm) {}
 
     fallback() external {
         /**
