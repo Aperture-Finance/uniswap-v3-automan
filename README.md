@@ -10,9 +10,9 @@ are met:
 
 - Close an existing position.
 - Rebalance a position to another price range.
-- Reinvest a position, i.e. collect accrued fees and add to the position's liquidity.
+- Reinvest a position, i.e., collect accrued fees and add to the position's liquidity.
 
-Example of a supported condition: when ETH price remains above $2000 for at least 72 hours according to Coingecko price
+Example of a supported condition: when ETH price remains above $2000 for at least 72 hours, according to Coingecko price
 feed.
 
 Aperture's automation service keeps track of scheduled tasks, periodically check whether user-specified conditions are
@@ -20,7 +20,7 @@ met, and trigger actions on-chain when conditions become satisfied.
 
 The [`UniV3Automan`](./src/UniV3Automan.sol) contract exposes external functions that allow Aperture's automation
 service to trigger the three supported actions. Note that 'rebalance' may involve the need to perform a swap such that
-the ratio of the two tokens meet the requirement of the new position's price range; similarly, 'reinvest' involves a
+the ratio of the two tokens meets the requirement of the new position's price range; similarly, 'reinvest' involves a
 swap among the collected fees such that the two tokens' ratio matches what's in the liquidity position in order to add
 liquidity. The [`OptimalSwap`](./src/libraries/OptimalSwap.sol) library makes use of a closed form solution that finds
 the optimal amount of token to swap in order to achieve a specified outcome of the two token's ratio, taking into
@@ -67,7 +67,7 @@ forge test
 ```
 
 The tests may take anywhere between seconds to minutes to complete depending on whether contract storage slots in scope
-are cahced.
+are cached.
 
 ## Scripting
 
@@ -117,7 +117,7 @@ found [here](https://github.com/NaryaAI/publications/blob/1468e568712d5e2aa9b0ec
 ## Licensing
 
 The primary license for Aperture UniV3 Automan contract is the Business Source License 1.1 (`BUSL-1.1`),
-see [`LICENSE`](./LICENSE). However, some files are dual licensed under `GPL-2.0-or-later` or `MIT`:
+see [`LICENSE`](./LICENSE). However, some files are dual-licensed under `GPL-2.0-or-later` or `MIT`:
 
 - Several files in `src/base/` may also be licensed under `GPL-2.0-or-later` (as indicated in their SPDX headers).
 - All files in `src/interfaces/` may also be licensed under `MIT` (as indicated in their SPDX headers).
