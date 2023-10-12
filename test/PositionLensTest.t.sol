@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import "src/lens/EphemeralAllPositions.sol";
 import "src/lens/EphemeralGetPosition.sol";
+import "src/lens/EphemeralGetPositions.sol";
 import "./uniswap/UniBase.sol";
 
 contract PositionLensTest is UniBase {
@@ -54,6 +55,18 @@ contract PositionLensTest is UniBase {
         } catch Error(string memory reason) {
             vm.expectRevert(bytes(reason));
             npm.positions(tokenId);
+        }
+    }
+
+    function testFuzz_GetPositions(uint256 startTokenId) public {
+        startTokenId = bound(startTokenId, 1, 10000);
+        try new EphemeralGetPositions(npm, startTokenId, startTokenId + 10) {} catch (bytes memory returnData) {
+            PositionState[] memory positions = abi.decode(returnData, (PositionState[]));
+            uint256 length = positions.length;
+            console2.log("length", length);
+            for (uint256 i; i < length; ++i) {
+                verifyPosition(positions[i]);
+            }
         }
     }
 

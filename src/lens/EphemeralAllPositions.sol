@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol";
 import "./PositionLens.sol";
 
 /// @notice A lens for Uniswap v3 that peeks into the current state of all positions by an owner without deployment
