@@ -16,8 +16,8 @@ contract DeployAutoman is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0x032f9b82ca075b32ff6cfa0714557c72fbccaea524cde22c44aa18720bcc4331;
-    bytes32 internal constant optimalSwapSalt = 0xbb4a1fda8a4ead46f8ccefacaaef335b49556fdffd8f9a31b62aa8ea09166a53;
+    bytes32 internal constant automanSalt = 0x264c8f7bbe39c408da3dce71a4cf46c474f3f85ef17016b46b1ed382578a3ce2;
+    bytes32 internal constant optimalSwapSalt = 0x25d61a346cb02fb86b96a0c62b1c222e04024550d908af19ba43cc43f767df7a;
     bytes32 internal constant routerProxySalt = 0x862e41240a461e611c6c023e3cf74c29b2ab80b8e2b2539de1b8b1f096922723;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
