@@ -5,14 +5,18 @@ import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../src/libraries/ERC20Caller.sol";
 
+contract MockERC20 is ERC20 {
+    constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
+}
+
 /// @dev Test the ERC20Caller library.
 contract ERC20CallerTest is Test {
     address internal constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    ERC20 internal testToken;
+    MockERC20 internal testToken;
 
     function setUp() public {
         vm.createSelectFork("mainnet", 17000000);
-        testToken = new ERC20("TestToken", "TEST");
+        testToken = new MockERC20("TestToken", "TEST");
     }
 
     function test_TotalSupply() public {

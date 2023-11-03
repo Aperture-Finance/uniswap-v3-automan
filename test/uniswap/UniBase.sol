@@ -6,7 +6,7 @@ import {WETH as IWETH} from "solady/src/tokens/WETH.sol";
 import "solady/src/utils/SafeTransferLib.sol";
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
@@ -111,7 +111,7 @@ abstract contract UniBase is Test, Helper, IERC721Receiver, IERC1271, IUniswapV3
     function permitDigest(address spender, uint256 tokenId, uint256 deadline) internal view returns (bytes32) {
         (uint96 nonce, , , , , , , , , , , ) = npm.positions(tokenId);
         return
-            ECDSA.toTypedDataHash(
+            MessageHashUtils.toTypedDataHash(
                 DOMAIN_SEPARATOR,
                 keccak256(abi.encode(PERMIT_TYPEHASH, spender, tokenId, nonce, deadline))
             );
