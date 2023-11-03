@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {IUniswapV3Pool, PoolCaller, V3PoolCallee} from "@aperture_finance/uni-v3-lib/src/PoolCaller.sol";
 import {TickBitmap} from "@aperture_finance/uni-v3-lib/src/TickBitmap.sol";
+import {LibBit} from "solady/src/utils/LibBit.sol";
 
 /// @title Tick Lens contract
 /// @author Aperture Finance
@@ -22,15 +23,12 @@ abstract contract TickLens {
     /// @notice Get the number of populated ticks in a word of the tick bitmap of a pool
     function getNumberOfInitializedTicks(
         V3PoolCallee pool,
-        int16 tickBitmapIndex
-    ) internal view returns (uint256 numberOfInitializedTicks) {
+        int16 wordPos
+    ) internal view returns (uint256 bitmap, uint256 count) {
         // fetch bitmap
-        uint256 bitmap = pool.tickBitmap(tickBitmapIndex);
-
+        bitmap = pool.tickBitmap(wordPos);
         // calculate the number of populated ticks
-        for (uint256 mask = 1; mask != 0; mask <<= 1) {
-            if (bitmap & mask != 0) ++numberOfInitializedTicks;
-        }
+        count = LibBit.popCount(bitmap);
     }
 
     function populateTick(V3PoolCallee pool, int24 tick, PopulatedTick memory populatedTick) internal view {
@@ -44,23 +42,24 @@ abstract contract TickLens {
 
     function populateTicksInWord(
         V3PoolCallee pool,
-        int16 tickBitmapIndex,
+        int16 wordPos,
         int24 tickSpacing,
+        uint256 bitmap,
         PopulatedTick[] memory populatedTicks,
-        uint256 startIdx
+        uint256 idx
     ) internal view returns (uint256) {
-        // fetch bitmap
-        uint256 bitmap = pool.tickBitmap(tickBitmapIndex);
-        for (uint256 bitPos; bitPos < 256; ++bitPos) {
-            //slither-disable-next-line incorrect-shift
-            if (bitmap & (1 << bitPos) != 0) {
-                int24 tick;
-                assembly {
-                    tick := mul(tickSpacing, add(shl(8, tickBitmapIndex), bitPos))
+        unchecked {
+            for (uint256 bitPos; bitPos < 256; ++bitPos) {
+                //slither-disable-next-line incorrect-shift
+                if (bitmap & (1 << bitPos) != 0) {
+                    int24 tick;
+                    assembly {
+                        tick := mul(tickSpacing, add(shl(8, wordPos), bitPos))
+                    }
+                    populateTick(pool, tick, populatedTicks[idx++]);
                 }
-                populateTick(pool, tick, populatedTicks[startIdx++]);
             }
+            return idx;
         }
-        return startIdx;
     }
 }

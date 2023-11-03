@@ -43,10 +43,10 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
     /// @notice The list of whitelisted routers
     mapping(address => bool) public isWhiteListedSwapRouter;
 
-    constructor(INPM nonfungiblePositionManager, address owner_) UniV3Immutables(nonfungiblePositionManager) {
-        require(owner_ != address(0));
-        _transferOwnership(owner_);
-    }
+    constructor(
+        INPM nonfungiblePositionManager,
+        address owner_
+    ) Ownable(owner_) UniV3Immutables(nonfungiblePositionManager) {}
 
     /************************************************
      *  ACCESS CONTROL

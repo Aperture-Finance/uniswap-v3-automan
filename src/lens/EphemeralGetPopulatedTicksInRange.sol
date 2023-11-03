@@ -39,16 +39,28 @@ contract EphemeralGetPopulatedTicksInRange is TickLens {
             compressed = TickBitmap.compress(tickUpper, tickSpacing);
             wordPosUpper = int16(compressed >> 8);
         }
-        // calculate the number of populated ticks
-        uint256 numberOfPopulatedTicks;
-        for (int16 wordPos = wordPosLower; wordPos <= wordPosUpper; ++wordPos) {
-            numberOfPopulatedTicks += getNumberOfInitializedTicks(pool, wordPos);
-        }
-        // fetch populated tick data
-        populatedTicks = new PopulatedTick[](numberOfPopulatedTicks);
-        uint256 startIdx;
-        for (int16 wordPos = wordPosLower; wordPos <= wordPosUpper; ++wordPos) {
-            startIdx = populateTicksInWord(pool, wordPos, tickSpacing, populatedTicks, startIdx);
+        unchecked {
+            // cache the bitmap and calculate the number of populated ticks
+            uint256[] memory tickBitmap = new uint256[](uint16(wordPosUpper - wordPosLower + 1));
+            uint256 numberOfPopulatedTicks;
+            for (int16 wordPos = wordPosLower; wordPos <= wordPosUpper; ++wordPos) {
+                (uint256 bitmap, uint256 count) = getNumberOfInitializedTicks(pool, wordPos);
+                tickBitmap[uint16(wordPos - wordPosLower)] = bitmap;
+                numberOfPopulatedTicks += count;
+            }
+            // fetch populated tick data
+            populatedTicks = new PopulatedTick[](numberOfPopulatedTicks);
+            uint256 idx;
+            for (int16 wordPos = wordPosLower; wordPos <= wordPosUpper; ++wordPos) {
+                idx = populateTicksInWord(
+                    pool,
+                    wordPos,
+                    tickSpacing,
+                    tickBitmap[uint16(wordPos - wordPosLower)],
+                    populatedTicks,
+                    idx
+                );
+            }
         }
     }
 }

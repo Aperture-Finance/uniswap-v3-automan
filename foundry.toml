@@ -23,7 +23,7 @@ yul = true
 
 [fuzz]
 runs = 256
-seed = 42
+seed = "42"
 
 [invariant]
 runs = 64
