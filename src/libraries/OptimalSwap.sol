@@ -64,13 +64,14 @@ library OptimalSwap {
         if (amount0Desired == 0 && amount1Desired == 0) return (0, 0, false, 0);
         if (tickLower >= tickUpper || tickLower < TickMath.MIN_TICK || tickUpper > TickMath.MAX_TICK)
             revert Invalid_Tick_Range();
-        {
-            // Ensure the pool exists.
-            uint256 poolCodeSize;
-            assembly {
-                poolCodeSize := extcodesize(pool)
+        // Ensure the pool exists.
+        assembly ("memory-safe") {
+            let poolCodeSize := extcodesize(pool)
+            if iszero(poolCodeSize) {
+                // revert Invalid_Pool()
+                mstore(0, 0x01ac05a5)
+                revert(0x1c, 0x04)
             }
-            if (poolCodeSize == 0) revert Invalid_Pool();
         }
         // intermediate state cache
         SwapState memory state;
@@ -122,7 +123,7 @@ library OptimalSwap {
         // Remaining amount of token1 to add liquidity at the last tick
         uint256 amount1LastTick;
         assembly ("memory-safe") {
-            // liquidity = state.liquidity
+            // liquidityLast = state.liquidity
             liquidityLast := mload(state)
             // sqrtPriceLastTickX96 = state.sqrtPriceX96
             sqrtPriceLastTickX96 := mload(add(state, 0x20))
@@ -132,54 +133,7 @@ library OptimalSwap {
             amount1LastTick := mload(add(state, 0x80))
         }
         unchecked {
-            if (zeroForOne) {
-                // The last tick is out of range. There are two cases:
-                // 1. There is not enough token0 to swap to reach the upper tick.
-                // 2. There is no initialized tick between the last tick and the upper tick.
-                if (sqrtPriceLastTickX96 > sqrtRatioUpperX96) {
-                    sqrtPriceX96 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                        sqrtPriceLastTickX96,
-                        liquidityLast,
-                        amount0LastTick.mulDiv(MAX_FEE_PIPS - state.feePips, MAX_FEE_PIPS),
-                        true
-                    );
-                    // The final price is out of range. Simply consume all token0.
-                    if (sqrtPriceX96 >= sqrtRatioUpperX96) {
-                        amountIn = amount0Desired;
-                    }
-                    // Swap to the upper tick and update the state.
-                    else {
-                        amount0LastTick -= SqrtPriceMath
-                            .getAmount0Delta(sqrtRatioUpperX96, sqrtPriceLastTickX96, liquidityLast, true)
-                            .mulDiv(MAX_FEE_PIPS, MAX_FEE_PIPS - state.feePips);
-                        amount1LastTick += SqrtPriceMath.getAmount1Delta(
-                            sqrtRatioUpperX96,
-                            sqrtPriceLastTickX96,
-                            liquidityLast,
-                            false
-                        );
-                        sqrtPriceLastTickX96 = sqrtRatioUpperX96;
-                        state.sqrtPriceX96 = sqrtPriceLastTickX96;
-                        state.amount0Desired = amount0LastTick;
-                        state.amount1Desired = amount1LastTick;
-                    }
-                }
-                // The final price is in range. Use the closed form solution.
-                if (sqrtPriceLastTickX96 <= sqrtRatioUpperX96) {
-                    sqrtPriceX96 = solveOptimalZeroForOne(state);
-                    amountIn =
-                        amount0Desired -
-                        amount0LastTick +
-                        SqrtPriceMath.getAmount0Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, true).mulDiv(
-                            MAX_FEE_PIPS,
-                            MAX_FEE_PIPS - state.feePips
-                        );
-                }
-                amountOut =
-                    amount1LastTick -
-                    amount1Desired +
-                    SqrtPriceMath.getAmount1Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, false);
-            } else {
+            if (!zeroForOne) {
                 // The last tick is out of range. There are two cases:
                 // 1. There is not enough token1 to swap to reach the lower tick.
                 // 2. There is no initialized tick between the last tick and the lower tick.
@@ -226,6 +180,53 @@ library OptimalSwap {
                     amount0LastTick -
                     amount0Desired +
                     SqrtPriceMath.getAmount0Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, false);
+            } else {
+                // The last tick is out of range. There are two cases:
+                // 1. There is not enough token0 to swap to reach the upper tick.
+                // 2. There is no initialized tick between the last tick and the upper tick.
+                if (sqrtPriceLastTickX96 > sqrtRatioUpperX96) {
+                    sqrtPriceX96 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
+                        sqrtPriceLastTickX96,
+                        liquidityLast,
+                        amount0LastTick.mulDiv(MAX_FEE_PIPS - state.feePips, MAX_FEE_PIPS),
+                        true
+                    );
+                    // The final price is out of range. Simply consume all token0.
+                    if (sqrtPriceX96 >= sqrtRatioUpperX96) {
+                        amountIn = amount0Desired;
+                    }
+                    // Swap to the upper tick and update the state.
+                    else {
+                        amount0LastTick -= SqrtPriceMath
+                            .getAmount0Delta(sqrtRatioUpperX96, sqrtPriceLastTickX96, liquidityLast, true)
+                            .mulDiv(MAX_FEE_PIPS, MAX_FEE_PIPS - state.feePips);
+                        amount1LastTick += SqrtPriceMath.getAmount1Delta(
+                            sqrtRatioUpperX96,
+                            sqrtPriceLastTickX96,
+                            liquidityLast,
+                            false
+                        );
+                        sqrtPriceLastTickX96 = sqrtRatioUpperX96;
+                        state.sqrtPriceX96 = sqrtPriceLastTickX96;
+                        state.amount0Desired = amount0LastTick;
+                        state.amount1Desired = amount1LastTick;
+                    }
+                }
+                // The final price is in range. Use the closed form solution.
+                if (sqrtPriceLastTickX96 <= sqrtRatioUpperX96) {
+                    sqrtPriceX96 = solveOptimalZeroForOne(state);
+                    amountIn =
+                        amount0Desired -
+                        amount0LastTick +
+                        SqrtPriceMath.getAmount0Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, true).mulDiv(
+                            MAX_FEE_PIPS,
+                            MAX_FEE_PIPS - state.feePips
+                        );
+                }
+                amountOut =
+                    amount1LastTick -
+                    amount1Desired +
+                    SqrtPriceMath.getAmount1Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, false);
             }
         }
     }
@@ -258,18 +259,7 @@ library OptimalSwap {
             uint256 amount1Desired;
 
             unchecked {
-                if (zeroForOne) {
-                    // Abuse `amount0Desired` to store `amountIn` to avoid stack too deep errors.
-                    (sqrtPriceX96, amount0Desired, amount1Desired) = SwapMath.computeSwapStepExactIn(
-                        uint160(state.sqrtPriceX96),
-                        sqrtPriceNextX96,
-                        state.liquidity,
-                        state.amount0Desired,
-                        state.feePips
-                    );
-                    amount0Desired = state.amount0Desired - amount0Desired;
-                    amount1Desired = state.amount1Desired + amount1Desired;
-                } else {
+                if (!zeroForOne) {
                     // Abuse `amount1Desired` to store `amountIn` to avoid stack too deep errors.
                     (sqrtPriceX96, amount1Desired, amount0Desired) = SwapMath.computeSwapStepExactIn(
                         uint160(state.sqrtPriceX96),
@@ -280,6 +270,17 @@ library OptimalSwap {
                     );
                     amount0Desired = state.amount0Desired + amount0Desired;
                     amount1Desired = state.amount1Desired - amount1Desired;
+                } else {
+                    // Abuse `amount0Desired` to store `amountIn` to avoid stack too deep errors.
+                    (sqrtPriceX96, amount0Desired, amount1Desired) = SwapMath.computeSwapStepExactIn(
+                        uint160(state.sqrtPriceX96),
+                        sqrtPriceNextX96,
+                        state.liquidity,
+                        state.amount0Desired,
+                        state.feePips
+                    );
+                    amount0Desired = state.amount0Desired - amount0Desired;
+                    amount1Desired = state.amount1Desired + amount1Desired;
                 }
             }
 
@@ -293,8 +294,10 @@ library OptimalSwap {
                     sqrtPriceX96,
                     state.sqrtRatioLowerX96,
                     state.sqrtRatioUpperX96
-                ) == zeroForOne
+                ) != zeroForOne
             ) {
+                break;
+            } else {
                 int128 liquidityNet = pool.liquidityNet(tickNext);
                 assembly ("memory-safe") {
                     // If we're moving leftward, we interpret `liquidityNet` as the opposite sign.
@@ -312,7 +315,7 @@ library OptimalSwap {
                     // state.amount1Desired = amount1Desired
                     mstore(add(state, 0x80), amount1Desired)
                 }
-            } else break;
+            }
         } while (true);
     }
 
@@ -360,7 +363,7 @@ library OptimalSwap {
                     a0 := add(amount0Desired, div(mul(MAX_FEE_PIPS, liquidityX96), mul(FEE_COMPLEMENT, sqrtPriceX96)))
                     a := sub(a0, div(liquidityX96, sqrtRatioUpperX96))
                     // `a` is always positive and greater than `amount0Desired`.
-                    if lt(a, amount0Desired) {
+                    if iszero(gt(a, amount0Desired)) {
                         // revert Math_Overflow()
                         mstore(0, 0x20236808)
                         revert(0x1c, 0x04)
@@ -466,7 +469,7 @@ library OptimalSwap {
                 c = c0 - liquidity.mulDiv96(sqrtRatioLowerX96);
                 assembly ("memory-safe") {
                     // `c` is always positive and greater than `amount1Desired`.
-                    if lt(c, amount1Desired) {
+                    if iszero(gt(c, amount1Desired)) {
                         // revert Math_Overflow()
                         mstore(0, 0x20236808)
                         revert(0x1c, 0x04)
