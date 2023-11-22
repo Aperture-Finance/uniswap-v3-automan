@@ -32,7 +32,7 @@ abstract contract TickLens {
     }
 
     function populateTick(V3PoolCallee pool, int24 tick, PopulatedTick memory populatedTick) internal view {
-        PoolCaller.Info memory info = pool.ticks(tick);
+        PoolCaller.TickInfo memory info = pool.ticks(tick);
         populatedTick.tick = tick;
         populatedTick.liquidityNet = info.liquidityNet;
         populatedTick.liquidityGross = info.liquidityGross;

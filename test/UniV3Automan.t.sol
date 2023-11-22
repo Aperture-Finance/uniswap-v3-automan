@@ -56,10 +56,6 @@ contract UniV3AutomanTest is UniHandler {
         deal(address(this), 0);
     }
 
-    function invariant_callSummary() public view {
-        handler.callSummary();
-    }
-
     /************************************************
      *  HELPERS
      ***********************************************/
