@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
+import "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
 import "./UniBase.sol";
 
 contract OptimalSwapTest is UniBase {
@@ -171,6 +173,38 @@ contract OptimalSwapTest is UniBase {
         deal(token1, address(this), amount1Desired);
         bool success = swapAndMint(address(this), amtSwap, zeroForOne, tickLower, tickUpper);
         if (success) assertLittleLeftover();
+    }
+
+    function test_OptimalSwapSparse() public {
+        vm.createSelectFork("mainnet", 18619101);
+        pool = 0xB17015D33C97A2cacA73be2a8669076a333FD43d;
+        uint256 tokenId = 608611;
+        int24 tickLower = -121440;
+        int24 tickUpper = -121380;
+        address owner = NPMCaller.ownerOf(npm, tokenId);
+        Position memory position = NPMCaller.positions(npm, tokenId);
+        token0 = position.token0;
+        token1 = position.token1;
+        vm.startPrank(owner);
+        NPMCaller.decreaseLiquidity(
+            npm,
+            INPM.DecreaseLiquidityParams(tokenId, position.liquidity, 0, 0, block.timestamp)
+        );
+        (uint256 amount0, uint256 amount1) = NPMCaller.collect(npm, tokenId, address(this));
+        (uint256 amountIn, , bool zeroForOne, uint160 sqrtPriceX96) = OptimalSwap.getOptimalSwap(
+            V3PoolCallee.wrap(pool),
+            tickLower,
+            tickUpper,
+            amount0,
+            amount1
+        );
+        int24 tick = TickMath.getTickAtSqrtRatio(sqrtPriceX96);
+        console2.log("final tick", tick);
+        vm.startPrank(address(this));
+        bool success = swapAndMint(address(this), amountIn, zeroForOne, tickLower, tickUpper);
+        assertTrue(success);
+        assertEq(currentTick(), tick);
+        assertLittleLeftover();
     }
 }
 

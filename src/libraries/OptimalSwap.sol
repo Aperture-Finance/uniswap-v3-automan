@@ -133,53 +133,99 @@ library OptimalSwap {
         }
         unchecked {
             if (zeroForOne) {
+                // The last tick is out of range. There are two cases:
+                // 1. There is not enough token0 to swap to reach the upper tick.
+                // 2. There is no initialized tick between the last tick and the upper tick.
+                if (sqrtPriceLastTickX96 > sqrtRatioUpperX96) {
+                    sqrtPriceX96 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
+                        sqrtPriceLastTickX96,
+                        liquidityLast,
+                        amount0LastTick.mulDiv(MAX_FEE_PIPS - state.feePips, MAX_FEE_PIPS),
+                        true
+                    );
+                    // The final price is out of range. Simply consume all token0.
+                    if (sqrtPriceX96 >= sqrtRatioUpperX96) {
+                        amountIn = amount0Desired;
+                    }
+                    // Swap to the upper tick and update the state.
+                    else {
+                        amount0LastTick -= SqrtPriceMath
+                            .getAmount0Delta(sqrtRatioUpperX96, sqrtPriceLastTickX96, liquidityLast, true)
+                            .mulDiv(MAX_FEE_PIPS, MAX_FEE_PIPS - state.feePips);
+                        amount1LastTick += SqrtPriceMath.getAmount1Delta(
+                            sqrtRatioUpperX96,
+                            sqrtPriceLastTickX96,
+                            liquidityLast,
+                            false
+                        );
+                        sqrtPriceLastTickX96 = sqrtRatioUpperX96;
+                        state.sqrtPriceX96 = sqrtPriceLastTickX96;
+                        state.amount0Desired = amount0LastTick;
+                        state.amount1Desired = amount1LastTick;
+                    }
+                }
                 // The final price is in range. Use the closed form solution.
                 if (sqrtPriceLastTickX96 <= sqrtRatioUpperX96) {
                     sqrtPriceX96 = solveOptimalZeroForOne(state);
                     amountIn =
                         amount0Desired -
                         amount0LastTick +
-                        (SqrtPriceMath.getAmount0Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, true) *
-                            MAX_FEE_PIPS).div(MAX_FEE_PIPS - state.feePips);
-                }
-                // The final price is out of range. Simply consume all token0.
-                else {
-                    amountIn = amount0Desired;
-                    sqrtPriceX96 = SqrtPriceMath.getNextSqrtPriceFromAmount0RoundingUp(
-                        sqrtPriceLastTickX96,
-                        liquidityLast,
-                        FullMath.mulDiv(amount0LastTick, MAX_FEE_PIPS - state.feePips, MAX_FEE_PIPS),
-                        true
-                    );
+                        SqrtPriceMath.getAmount0Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, true).mulDiv(
+                            MAX_FEE_PIPS,
+                            MAX_FEE_PIPS - state.feePips
+                        );
                 }
                 amountOut =
                     amount1LastTick -
                     amount1Desired +
                     SqrtPriceMath.getAmount1Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, false);
             } else {
+                // The last tick is out of range. There are two cases:
+                // 1. There is not enough token1 to swap to reach the lower tick.
+                // 2. There is no initialized tick between the last tick and the lower tick.
+                if (sqrtPriceLastTickX96 < sqrtRatioLowerX96) {
+                    sqrtPriceX96 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
+                        sqrtPriceLastTickX96,
+                        liquidityLast,
+                        amount1LastTick.mulDiv(MAX_FEE_PIPS - state.feePips, MAX_FEE_PIPS),
+                        true
+                    );
+                    // The final price is out of range. Simply consume all token1.
+                    if (sqrtPriceX96 < sqrtRatioLowerX96) {
+                        amountIn = amount1Desired;
+                    }
+                    // Swap to the lower tick and update the state.
+                    else {
+                        amount1LastTick -= SqrtPriceMath
+                            .getAmount1Delta(sqrtPriceLastTickX96, sqrtRatioLowerX96, liquidityLast, true)
+                            .mulDiv(MAX_FEE_PIPS, MAX_FEE_PIPS - state.feePips);
+                        amount0LastTick += SqrtPriceMath.getAmount0Delta(
+                            sqrtPriceLastTickX96,
+                            sqrtRatioLowerX96,
+                            liquidityLast,
+                            false
+                        );
+                        sqrtPriceLastTickX96 = sqrtRatioLowerX96;
+                        state.sqrtPriceX96 = sqrtPriceLastTickX96;
+                        state.amount0Desired = amount0LastTick;
+                        state.amount1Desired = amount1LastTick;
+                    }
+                }
                 // The final price is in range. Use the closed form solution.
                 if (sqrtPriceLastTickX96 >= sqrtRatioLowerX96) {
                     sqrtPriceX96 = solveOptimalOneForZero(state);
                     amountIn =
                         amount1Desired -
                         amount1LastTick +
-                        (SqrtPriceMath.getAmount1Delta(sqrtPriceLastTickX96, sqrtPriceX96, liquidityLast, true) *
-                            MAX_FEE_PIPS).div(MAX_FEE_PIPS - state.feePips);
-                }
-                // The final price is out of range. Simply consume all token1.
-                else {
-                    amountIn = amount1Desired;
-                    sqrtPriceX96 = SqrtPriceMath.getNextSqrtPriceFromAmount1RoundingDown(
-                        sqrtPriceLastTickX96,
-                        liquidityLast,
-                        FullMath.mulDiv(amount1LastTick, MAX_FEE_PIPS - state.feePips, MAX_FEE_PIPS),
-                        true
-                    );
+                        SqrtPriceMath.getAmount1Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, true).mulDiv(
+                            MAX_FEE_PIPS,
+                            MAX_FEE_PIPS - state.feePips
+                        );
                 }
                 amountOut =
                     amount0LastTick -
                     amount0Desired +
-                    SqrtPriceMath.getAmount0Delta(sqrtPriceLastTickX96, sqrtPriceX96, liquidityLast, false);
+                    SqrtPriceMath.getAmount0Delta(sqrtPriceX96, sqrtPriceLastTickX96, liquidityLast, false);
             }
         }
     }
