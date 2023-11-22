@@ -119,8 +119,8 @@ abstract contract PositionLens {
         int24 tickUpper,
         int24 tickCurrent
     ) internal view returns (uint256 feeGrowthInside0X128, uint256 feeGrowthInside1X128) {
-        PoolCaller.Info memory lower = pool.ticks(tickLower);
-        PoolCaller.Info memory upper = pool.ticks(tickUpper);
+        PoolCaller.TickInfo memory lower = pool.ticks(tickLower);
+        PoolCaller.TickInfo memory upper = pool.ticks(tickUpper);
 
         unchecked {
             if (tickCurrent < tickLower) {
