@@ -1,7 +1,8 @@
-# Aperture Core Contracts
+# Aperture UniV3 Automan
 
-[![Prettier](https://github.com/Aperture-Finance/core-contracts/actions/workflows/prettier.yml/badge.svg)](https://github.com/Aperture-Finance/core-contracts/actions/workflows/prettier.yml)
-[![Test](https://github.com/Aperture-Finance/core-contracts/actions/workflows/test.yml/badge.svg)](https://github.com/Aperture-Finance/core-contracts/actions/workflows/test.yml)
+[![License: BUSL-1.1](https://img.shields.io/badge/License-BUSL--1.1-yellow.svg)](https://opensource.org/licenses/BUSL-1.1)
+[![Prettier](https://github.com/Aperture-Finance/uniswap-v3-automan/actions/workflows/prettier.yml/badge.svg)](https://github.com/Aperture-Finance/uniswap-v3-automan/actions/workflows/prettier.yml)
+[![Test](https://github.com/Aperture-Finance/uniswap-v3-automan/actions/workflows/test.yml/badge.svg)](https://github.com/Aperture-Finance/uniswap-v3-automan/actions/workflows/test.yml)
 
 This repository contains the UniV3Automan contract, serving Aperture's Uniswap V3 liquidity position automation product.
 
