@@ -11,6 +11,8 @@ import {ERC20Callee} from "./libraries/ERC20Caller.sol";
 contract RouterProxy {
     using SafeTransferLib for address;
 
+    constructor() payable {}
+
     fallback() external {
         /**
             `msg.data` is encoded as `abi.encodePacked(router, approvalTarget, tokenIn, tokenOut, amountIn, data)`.

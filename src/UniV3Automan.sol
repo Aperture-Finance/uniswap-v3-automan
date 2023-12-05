@@ -46,7 +46,7 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
     constructor(
         INPM nonfungiblePositionManager,
         address owner_
-    ) Ownable(owner_) UniV3Immutables(nonfungiblePositionManager) {}
+    ) payable Ownable(owner_) UniV3Immutables(nonfungiblePositionManager) {}
 
     /************************************************
      *  ACCESS CONTROL
@@ -78,7 +78,7 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
 
     /// @notice Set the fee limit and collector
     /// @param _feeConfig The new fee configuration
-    function setFeeConfig(FeeConfig calldata _feeConfig) external onlyOwner {
+    function setFeeConfig(FeeConfig calldata _feeConfig) external payable onlyOwner {
         require(_feeConfig.feeLimitPips < MAX_FEE_PIPS);
         require(_feeConfig.feeCollector != address(0));
         feeConfig = _feeConfig;
@@ -86,7 +86,7 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
     }
 
     /// @notice Set addresses that can perform automation
-    function setControllers(address[] calldata controllers, bool[] calldata statuses) external onlyOwner {
+    function setControllers(address[] calldata controllers, bool[] calldata statuses) external payable onlyOwner {
         uint256 len = controllers.length;
         require(len == statuses.length);
         unchecked {
@@ -106,7 +106,7 @@ contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3A
     /// external swap. The router can't, however, drain ERC20 or ERC721 tokens which have been approved by other users
     /// to this contract. Because this contract doesn't contain `transferFrom` with random `from` address like that in
     /// SushiSwap's [`RouteProcessor2`](https://rekt.news/sushi-yoink-rekt/).
-    function setSwapRouters(address[] calldata routers, bool[] calldata statuses) external onlyOwner {
+    function setSwapRouters(address[] calldata routers, bool[] calldata statuses) external payable onlyOwner {
         uint256 len = routers.length;
         require(len == statuses.length);
         unchecked {
