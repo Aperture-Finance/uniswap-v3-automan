@@ -80,9 +80,7 @@ contract DeployAutoman is Script {
         initCodeHash = keccak256(initCode);
         console2.log("RouterProxy initCodeHash:");
         console2.logBytes32(initCodeHash);
-        RouterProxy routerProxy = RouterProxy(
-            create2deployer.computeAddress(routerProxySalt, initCodeHash)
-        );
+        RouterProxy routerProxy = RouterProxy(create2deployer.computeAddress(routerProxySalt, initCodeHash));
         if (address(routerProxy).code.length == 0) {
             // Deploy routerProxy
             create2deployer.deploy(0, routerProxySalt, initCode);
