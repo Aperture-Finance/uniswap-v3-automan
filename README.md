@@ -70,6 +70,14 @@ forge test
 The tests may take anywhere between seconds to minutes to complete depending on whether contract storage slots in scope
 are cached.
 
+In case of mysterious failures such as "failed to set up invariant testing environment", it may be caused by a Foundry issue. Try again with the following commands:
+
+```shell
+forge clean
+forge build
+forge test
+```
+
 ## Scripting
 
 To simulate scripts, we can pass in `--fork-url <network>` to `forge script`. The `network` can be an
@@ -84,6 +92,39 @@ To run broadcast transactions on-chain, use:
 ```shell
 forge script DeployAutoman --rpc-url goerli --broadcast -vvvv
 ```
+
+## Deployment
+
+We use https://github.com/pcaversaccio/create2deployer to deploy contracts. If the network we want to deploy to doesn't currently have a `create2deployer` deployment then we need to first contact the owner to deploy that.
+
+First, dry-run the deployment script on a local fork to get the `initCodeHash` of `UniV3Automan` contract:
+
+```shell
+forge script DeployAutoman --fork-url [NETWORK_NAME] -vvvv
+```
+
+The output of the above command should contain text like "Automan initCodeHash: 0xbafd4e1d1ff7f7979102d9e80884c2a93d0e1160dae77b5f88e9bca95eb5e4d0".
+
+Second, use the initCodeHash obtained above to mine a vanity address using the following commands:
+
+```shell
+git clone https://github.com/0age/create2crunch
+cd create2crunch
+export FACTORY="0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2"
+export CALLER="[DEPLOYER_ADDRESS_GOES_HERE]"
+export INIT_CODE_HASH="[INIT_CODE_HASH_GOES_HERE]"
+cargo run --release $FACTORY $CALLER $INIT_CODE_HASH
+```
+
+You should see rows like
+```
+0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b2000061fb0dd => 0x00006C2eEC8d3AC8720D65e400fe0079C32eee5A => 2
+0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b6000064122f4 => 0x0000000054D52974711c14aB458780886579167F => 256
+```
+being generated. The bytes starting with "0xbeef" are salts, and the corresponding contract addresses are shown to their right. When a desired address has been mined, stop the create2crunch script and update `script/DeployAutoman.s.sol` with the mined salt.
+
+Re-simulate `DeployAutoman` with a dry-run to verify that the deployment address matches expectation, and broadcast the transaction on-chain.
+
 
 ## Verification
 

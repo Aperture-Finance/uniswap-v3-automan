@@ -1,0 +1,9 @@
+{
+  "nonfungiblePositionManager": "0xB39002E4033b162fAc607fc3471E205FA2aE5967",
+  "owner": "0xaF327bb0AF7c282FD75ee72651f4E78D4349d517",
+  "feeConfig": {
+    "feeLimitPips": 200000000000000000,
+    "feeCollector": "0xaF327bb0AF7c282FD75ee72651f4E78D4349d517"
+  },
+  "controller": "0x01aB1be3518F490c9F0b97447FBb1c335EFbE600"
+}

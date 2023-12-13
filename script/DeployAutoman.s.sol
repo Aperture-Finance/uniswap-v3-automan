@@ -16,9 +16,9 @@ contract DeployAutoman is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0x264c8f7bbe39c408da3dce71a4cf46c474f3f85ef17016b46b1ed382578a3ce2;
-    bytes32 internal constant optimalSwapSalt = 0x25d61a346cb02fb86b96a0c62b1c222e04024550d908af19ba43cc43f767df7a;
-    bytes32 internal constant routerProxySalt = 0x862e41240a461e611c6c023e3cf74c29b2ab80b8e2b2539de1b8b1f096922723;
+    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b400009e78fae;
+    bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127dfc30de0987800003da9a65;
+    bytes32 internal constant routerProxySalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112bc2281f12f80c0000280f6fd;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
     function readInput(string memory input) internal view returns (string memory) {
@@ -49,7 +49,7 @@ contract DeployAutoman is Script {
         // Concatenate init code with encoded arguments
         bytes memory initCode = bytes.concat(type(UniV3Automan).creationCode, encodedArguments);
         bytes32 initCodeHash = keccak256(initCode);
-        console2.log("Automan initCodeHash:");
+        console2.log("UniV3Automan initCodeHash:");
         console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
         UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(automanSalt, initCodeHash)));
@@ -76,17 +76,23 @@ contract DeployAutoman is Script {
             );
         }
 
+        initCode = type(RouterProxy).creationCode;
+        initCodeHash = keccak256(initCode);
+        console2.log("RouterProxy initCodeHash:");
+        console2.logBytes32(initCodeHash);
         RouterProxy routerProxy = RouterProxy(
-            create2deployer.computeAddress(routerProxySalt, keccak256(type(RouterProxy).creationCode))
+            create2deployer.computeAddress(routerProxySalt, initCodeHash)
         );
         if (address(routerProxy).code.length == 0) {
             // Deploy routerProxy
-            create2deployer.deploy(0, routerProxySalt, type(RouterProxy).creationCode);
+            create2deployer.deploy(0, routerProxySalt, initCode);
             console2.log("RouterProxy deployed at: %s", address(routerProxy));
         }
 
         initCode = bytes.concat(type(OptimalSwapRouter).creationCode, abi.encode(params.npm));
         initCodeHash = keccak256(initCode);
+        console2.log("OptimalSwapRouter initCodeHash:");
+        console2.logBytes32(initCodeHash);
         OptimalSwapRouter optimalSwapRouter = OptimalSwapRouter(
             payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash))
         );
