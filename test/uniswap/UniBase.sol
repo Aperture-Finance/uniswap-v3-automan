@@ -11,18 +11,29 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
+import "@pancakeswap/v3-core/contracts/interfaces/callback/IPancakeV3SwapCallback.sol";
+import "@pancakeswap/v3-core/contracts/interfaces/callback/IPancakeV3MintCallback.sol";
 import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
 import "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import "src/libraries/OptimalSwap.sol";
 import "./Helper.sol";
 
 /// @dev Base contract for Uniswap v3 tests
-abstract contract UniBase is Test, Helper, IERC721Receiver, IERC1271, IUniswapV3SwapCallback, IUniswapV3MintCallback {
+abstract contract UniBase is
+    Test,
+    Helper,
+    IERC721Receiver,
+    IERC1271,
+    IUniswapV3SwapCallback,
+    IUniswapV3MintCallback,
+    IPancakeV3SwapCallback,
+    IPancakeV3MintCallback
+{
     using SafeTransferLib for address;
     using TickMath for int24;
 
     // Uniswap v3 position manager
-    INPM internal constant npm = INPM(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
+    INPM internal npm = INPM(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
 
     uint256 internal chainId;
     address payable internal WETH;
@@ -340,8 +351,20 @@ abstract contract UniBase is Test, Helper, IERC721Receiver, IERC1271, IUniswapV3
         if (amount1Delta > 0) token1.safeTransfer(pool, uint256(amount1Delta));
     }
 
+    /// @dev Pay pool to finish swap
+    function pancakeV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata) external {
+        if (amount0Delta > 0) token0.safeTransfer(pool, uint256(amount0Delta));
+        if (amount1Delta > 0) token1.safeTransfer(pool, uint256(amount1Delta));
+    }
+
     /// @dev Pay pool to finish minting
     function uniswapV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata) external {
+        if (amount0Owed > 0) token0.safeTransfer(pool, amount0Owed);
+        if (amount1Owed > 0) token1.safeTransfer(pool, amount1Owed);
+    }
+
+    /// @dev Pay pool to finish minting
+    function pancakeV3MintCallback(uint256 amount0Owed, uint256 amount1Owed, bytes calldata) external {
         if (amount0Owed > 0) token0.safeTransfer(pool, amount0Owed);
         if (amount1Owed > 0) token1.safeTransfer(pool, amount1Owed);
     }
