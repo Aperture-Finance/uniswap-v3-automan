@@ -6,7 +6,7 @@ import "src/base/SwapRouter.sol";
 import "./UniBase.sol";
 
 /// @dev SwapRouter with public functions for testing
-contract SwapRouterHandler is SwapRouter, Helper {
+contract SwapRouterHandler is SwapRouterUniswapV3, Helper {
     constructor(INPM nonfungiblePositionManager) UniV3Immutables(nonfungiblePositionManager) {}
 
     /// @dev Make a direct `exactIn` pool swap

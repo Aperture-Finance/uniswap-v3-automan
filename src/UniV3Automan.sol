@@ -9,7 +9,8 @@ import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/
 import {LiquidityAmounts} from "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import {NPMCaller, Position} from "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
 import {PoolAddress, PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
-import {Payments, SwapRouter, UniV3Immutables} from "./base/SwapRouter.sol";
+import {SwapRouterUniswapV3} from "./base/SwapRouter.sol";
+import {UniV3Immutables} from "./base/Immutables.sol";
 import {IUniV3Automan} from "./interfaces/IUniV3Automan.sol";
 import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "./libraries/OptimalSwap.sol";
 
@@ -17,7 +18,7 @@ import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "./libraries/Optimal
 /// @author Aperture Finance
 /// @dev The validity of the tokens in `poolKey` and the pool contract computed from it is not checked here.
 /// However if they are invalid, pool `swap`, `burn` and `mint` will revert here or in `NonfungiblePositionManager`.
-contract UniV3Automan is Ownable, UniV3Immutables, Payments, SwapRouter, IUniV3Automan {
+contract UniV3Automan is Ownable, SwapRouterUniswapV3, IUniV3Automan {
     using SafeTransferLib for address;
     using FullMath for uint256;
     using TickMath for int24;

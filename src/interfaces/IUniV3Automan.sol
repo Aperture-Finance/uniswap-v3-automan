@@ -4,7 +4,7 @@ pragma solidity >=0.8.0;
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
 import {V3PoolCallee} from "@aperture_finance/uni-v3-lib/src/PoolCaller.sol";
-import {IUniV3Immutables} from "./IUniV3Immutables.sol";
+import {IUniV3Immutables} from "./IImmutables.sol";
 
 /// @title Interface for the Uniswap v3 Automation Manager
 interface IUniV3Automan is IUniV3Immutables, IUniswapV3SwapCallback {

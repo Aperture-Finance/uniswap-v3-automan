@@ -4,9 +4,9 @@ pragma solidity ^0.8.18;
 import "solady/src/utils/SafeTransferLib.sol";
 import {ERC20Callee} from "../libraries/ERC20Caller.sol";
 import {WETHCallee} from "../libraries/WETHCaller.sol";
-import {UniV3Immutables} from "./UniV3Immutables.sol";
+import {Immutables} from "./Immutables.sol";
 
-abstract contract Payments is UniV3Immutables {
+abstract contract Payments is Immutables {
     using SafeTransferLib for address;
 
     error NotWETH9();
