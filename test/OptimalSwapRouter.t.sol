@@ -2,21 +2,21 @@
 pragma solidity ^0.8.0;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "src/OptimalSwapRouter.sol";
+import "src/UniV3OptimalSwapRouter.sol";
 import "src/UniV3Automan.sol";
 import "./uniswap/UniHandler.sol";
 
 contract OptimalSwapRouterTest is UniHandler {
     using SafeTransferLib for address;
 
-    OptimalSwapRouter internal optimalSwapRouter;
+    UniV3OptimalSwapRouter internal optimalSwapRouter;
     address internal constant v3SwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
     function setUp() public override {
         super.setUp();
 
         automan = new UniV3Automan(npm, address(this));
-        optimalSwapRouter = new OptimalSwapRouter(npm);
+        optimalSwapRouter = new UniV3OptimalSwapRouter(npm);
 
         address[] memory routers = new address[](1);
         routers[0] = address(optimalSwapRouter);

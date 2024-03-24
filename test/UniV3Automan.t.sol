@@ -105,7 +105,7 @@ contract UniV3AutomanTest is UniHandler {
         routers[0] = address(npm);
         bool[] memory statuses = new bool[](1);
         statuses[0] = true;
-        vm.expectRevert(IUniV3Automan.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
     }
 
@@ -115,10 +115,10 @@ contract UniV3AutomanTest is UniHandler {
         routers[0] = address(WETH);
         bool[] memory statuses = new bool[](1);
         statuses[0] = true;
-        vm.expectRevert(IUniV3Automan.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
         routers[0] = address(USDC);
-        vm.expectRevert(IUniV3Automan.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
     }
 
@@ -128,7 +128,7 @@ contract UniV3AutomanTest is UniHandler {
         deal(amount0Desired, amount1Desired);
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
-        vm.expectRevert(IUniV3Automan.NotWhitelistedRouter.selector);
+        vm.expectRevert(IAutoman.NotWhitelistedRouter.selector);
         automan.mintOptimal(
             INPM.MintParams({
                 token0: token0,
@@ -155,24 +155,24 @@ contract UniV3AutomanTest is UniHandler {
         // `user` is not the owner or controller.
         assertTrue(!automan.isController(user));
         vm.startPrank(user);
-        vm.expectRevert(IUniV3Automan.NotApproved.selector);
+        vm.expectRevert(IAutoman.NotApproved.selector);
         _decreaseLiquidity(tokenId, 1, 0);
-        vm.expectRevert(IUniV3Automan.NotApproved.selector);
+        vm.expectRevert(IAutoman.NotApproved.selector);
         _decreaseLiquiditySingle(tokenId, 1, true, 0);
-        vm.expectRevert(IUniV3Automan.NotApproved.selector);
+        vm.expectRevert(IAutoman.NotApproved.selector);
         _removeLiquidity(tokenId, 0);
-        vm.expectRevert(IUniV3Automan.NotApproved.selector);
+        vm.expectRevert(IAutoman.NotApproved.selector);
         _removeLiquiditySingle(tokenId, true, 0);
-        vm.expectRevert(IUniV3Automan.NotApproved.selector);
+        vm.expectRevert(IAutoman.NotApproved.selector);
         _reinvest(tokenId, 1e12);
         (tickLower, tickUpper) = prepTicks(0, 100);
-        vm.expectRevert(IUniV3Automan.NotApproved.selector);
+        vm.expectRevert(IAutoman.NotApproved.selector);
         _rebalance(tokenId, tickLower, tickUpper, 1e12);
     }
 
     /// @dev Should revert if the fee is greater than the limit
     function testRevert_FeeLimitExceeded() public {
-        vm.expectRevert(IUniV3Automan.FeeLimitExceeded.selector);
+        vm.expectRevert(IAutoman.FeeLimitExceeded.selector);
         _decreaseLiquidity(thisTokenId, 1, 1e17);
     }
 
@@ -353,7 +353,7 @@ contract UniV3AutomanTest is UniHandler {
     function testRevert_TooMuchFee() public {
         uint256 tokenId = thisTokenId;
         npm.approve(address(automan), tokenId);
-        vm.expectRevert(IUniV3Automan.InsufficientAmount.selector);
+        vm.expectRevert(IAutoman.InsufficientAmount.selector);
         _decreaseLiquidity(tokenId, 10, 1e16);
     }
 

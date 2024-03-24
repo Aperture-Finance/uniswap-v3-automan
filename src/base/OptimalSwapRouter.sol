@@ -1,23 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.18;
 
-import "solady/src/utils/SafeTransferLib.sol";
-import {INonfungiblePositionManager} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
-import {PoolAddress, PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
-import {TernaryLib} from "@aperture_finance/uni-v3-lib/src/TernaryLib.sol";
-import {ERC20Callee} from "./libraries/ERC20Caller.sol";
-import {OptimalSwap, V3PoolCallee} from "./libraries/OptimalSwap.sol";
-import {Payments, SwapRouterUniswapV3, UniV3Immutables} from "./base/SwapRouter.sol";
+import "./SwapRouter.sol";
 
-/// @title Optimal Swap Router
-/// @author Aperture Finance
-/// @dev This router swaps through an aggregator to get to approximately the optimal ratio to add liquidity in a Uni V3
-/// pool, then swaps the tokens to the optimal ratio to add liquidity in the same pool.
-contract OptimalSwapRouter is SwapRouterUniswapV3 {
+abstract contract OptimalSwapRouter is SwapRouter {
     using SafeTransferLib for address;
     using TernaryLib for bool;
-
-    constructor(INonfungiblePositionManager npm) payable UniV3Immutables(npm) {}
 
     fallback() external {
         /**
@@ -88,7 +76,7 @@ contract OptimalSwapRouter is SwapRouterUniswapV3 {
                     tickUpper := signextend(2, shr(232, calldataload(46)))
                 }
                 PoolKey memory poolKey = PoolKey({token0: token0, token1: token1, fee: fee});
-                address pool = PoolAddress.computeAddressSorted(factory, poolKey);
+                address pool = computeAddressSorted(poolKey);
                 uint256 amount0Desired;
                 uint256 amount1Desired;
                 // take into account the balance not pulled from the sender

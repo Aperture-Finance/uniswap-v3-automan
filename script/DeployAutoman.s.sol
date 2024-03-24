@@ -2,7 +2,7 @@
 pragma solidity ^0.8.18;
 
 import "forge-std/Script.sol";
-import "../src/OptimalSwapRouter.sol";
+import "../src/UniV3OptimalSwapRouter.sol";
 import "../src/RouterProxy.sol";
 import "../src/UniV3Automan.sol";
 
@@ -87,17 +87,17 @@ contract DeployAutoman is Script {
             console2.log("RouterProxy deployed at: %s", address(routerProxy));
         }
 
-        initCode = bytes.concat(type(OptimalSwapRouter).creationCode, abi.encode(params.npm));
+        initCode = bytes.concat(type(UniV3OptimalSwapRouter).creationCode, abi.encode(params.npm));
         initCodeHash = keccak256(initCode);
         console2.log("OptimalSwapRouter initCodeHash:");
         console2.logBytes32(initCodeHash);
-        OptimalSwapRouter optimalSwapRouter = OptimalSwapRouter(
+        UniV3OptimalSwapRouter optimalSwapRouter = UniV3OptimalSwapRouter(
             payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash))
         );
         if (address(optimalSwapRouter).code.length == 0) {
             // Deploy optimalSwapRouter
             create2deployer.deploy(0, optimalSwapSalt, initCode);
-            console2.log("OptimalSwapRouter deployed at: %s", address(optimalSwapRouter));
+            console2.log("UniV3OptimalSwapRouter deployed at: %s", address(optimalSwapRouter));
         }
 
         // Deployment completed.
