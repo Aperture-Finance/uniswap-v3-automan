@@ -5,20 +5,20 @@ import "solady/src/utils/SafeTransferLib.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
+import {INonfungiblePositionManager as INPM, IPCSV3NonfungiblePositionManager} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
 import {LiquidityAmounts} from "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import {NPMCaller, Position} from "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
-import {PoolAddress, PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
-import {UniV3SwapRouter} from "./base/SwapRouter.sol";
-import {UniV3Immutables} from "./base/Immutables.sol";
-import {IAutoman, IUniV3Automan} from "./interfaces/IAutoman.sol";
+import {PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolKey.sol";
+import {PCSV3SwapRouter} from "./base/SwapRouter.sol";
+import {PCSV3Immutables} from "./base/Immutables.sol";
+import {IAutoman, IPCSV3Automan} from "./interfaces/IAutoman.sol";
 import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "./libraries/OptimalSwap.sol";
 
 /// @title Automation manager for Uniswap v3 liquidity with built-in optimal swap algorithm
 /// @author Aperture Finance
 /// @dev The validity of the tokens in `poolKey` and the pool contract computed from it is not checked here.
 /// However if they are invalid, pool `swap`, `burn` and `mint` will revert here or in `NonfungiblePositionManager`.
-contract UniV3Automan is Ownable, UniV3SwapRouter, IUniV3Automan {
+contract PCSV3Automan is Ownable, PCSV3SwapRouter, IPCSV3Automan {
     using SafeTransferLib for address;
     using FullMath for uint256;
     using TickMath for int24;
@@ -45,9 +45,9 @@ contract UniV3Automan is Ownable, UniV3SwapRouter, IUniV3Automan {
     mapping(address => bool) public isWhiteListedSwapRouter;
 
     constructor(
-        INPM nonfungiblePositionManager,
+        IPCSV3NonfungiblePositionManager nonfungiblePositionManager,
         address owner_
-    ) payable Ownable(owner_) UniV3Immutables(nonfungiblePositionManager) {}
+    ) payable Ownable(owner_) PCSV3Immutables(nonfungiblePositionManager) {}
 
     /************************************************
      *  ACCESS CONTROL
@@ -495,7 +495,9 @@ contract UniV3Automan is Ownable, UniV3SwapRouter, IUniV3Automan {
         uint256 amount1;
         {
             // Calculate the principal amounts
-            (uint160 sqrtPriceX96, ) = V3PoolCallee.wrap(computeAddressSorted(poolKey)).sqrtPriceX96AndTick();
+            (uint160 sqrtPriceX96, ) = V3PoolCallee
+                .wrap(computeAddressSorted(poolKey))
+                .sqrtPriceX96AndTick();
             (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
                 pos.tickLower.getSqrtRatioAtTick(),

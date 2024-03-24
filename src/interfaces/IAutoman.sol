@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
+import "@pancakeswap/v3-core/contracts/interfaces/callback/IPancakeV3SwapCallback.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
 import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
 import {V3PoolCallee} from "@aperture_finance/uni-v3-lib/src/PoolCaller.sol";
-import {IUniV3Immutables} from "./IImmutables.sol";
+import {IPCSV3Immutables, IUniV3Immutables} from "./IImmutables.sol";
 
 /// @title Interface for the Uniswap v3 Automation Manager
-interface IUniV3Automan is IUniV3Immutables, IUniswapV3SwapCallback {
+interface IAutoman {
     /************************************************
      *  EVENTS
      ***********************************************/
@@ -404,3 +405,6 @@ interface IUniV3Automan is IUniV3Immutables, IUniswapV3SwapCallback {
         bytes32 s
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 }
+
+interface IUniV3Automan is IAutoman, IUniV3Immutables, IUniswapV3SwapCallback {}
+interface IPCSV3Automan is IAutoman, IPCSV3Immutables, IPancakeV3SwapCallback {}
