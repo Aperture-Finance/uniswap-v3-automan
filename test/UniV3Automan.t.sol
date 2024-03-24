@@ -24,7 +24,7 @@ contract UniV3AutomanTest is UniHandler {
         handler.init(automan);
 
         // Set up automan
-        automan.setFeeConfig(UniV3Automan.FeeConfig({feeLimitPips: 5e16, feeCollector: collector}));
+        automan.setFeeConfig(Automan.FeeConfig({feeLimitPips: 5e16, feeCollector: collector}));
         address[] memory controllers = new address[](2);
         controllers[0] = address(this);
         controllers[1] = address(handler);
