@@ -5,10 +5,43 @@ import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "src/base/SwapRouter.sol";
 import "./UniBase.sol";
 
-/// @dev SwapRouter with public functions for testing
-contract SwapRouterHandler is UniV3SwapRouter, Helper {
-    constructor(INPM nonfungiblePositionManager) UniV3Immutables(nonfungiblePositionManager) {}
+interface ISwapRouterHandler {
+    function poolSwap(
+        PoolKey memory poolKey,
+        address pool,
+        uint256 amountIn,
+        bool zeroForOne
+    ) external returns (uint256 amountOut);
 
+    function routerSwap(
+        PoolKey memory poolKey,
+        address router,
+        uint256 amountIn,
+        bool zeroForOne,
+        bytes calldata swapData
+    ) external returns (uint256 amountOut);
+
+    function optimalSwapWithPool(
+        PoolKey memory poolKey,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 amount0Desired,
+        uint256 amount1Desired
+    ) external returns (uint256 amount0, uint256 amount1);
+
+    function optimalSwapWithRouter(
+        PoolKey memory poolKey,
+        address router,
+        int24 tickLower,
+        int24 tickUpper,
+        uint256 amount0Desired,
+        uint256 amount1Desired,
+        bytes calldata swapData
+    ) external returns (uint256 amount0, uint256 amount1);
+}
+
+/// @dev SwapRouter with public functions for testing
+abstract contract SwapRouterHandler is SwapRouter, Helper, ISwapRouterHandler {
     /// @dev Make a direct `exactIn` pool swap
     /// @param poolKey The pool key containing the token addresses and fee tier
     /// @param pool The address of the pool
@@ -103,16 +136,33 @@ contract SwapRouterHandler is UniV3SwapRouter, Helper {
     }
 }
 
+contract UniV3SwapRouterHandler is SwapRouterHandler, UniswapV3Callback {
+    constructor(INPM nonfungiblePositionManager) UniV3Immutables(nonfungiblePositionManager) {}
+
+    function computeAddressSorted(PoolKey memory poolKey) internal view override returns (address pool) {
+        pool = PoolAddress.computeAddressSorted(factory, poolKey);
+    }
+}
+
+contract PCSV3SwapRouterHandler is SwapRouterHandler, PancakeV3Callback {
+    constructor(IPCSV3NonfungiblePositionManager npm) PCSV3Immutables(npm) {}
+
+    function computeAddressSorted(PoolKey memory poolKey) internal view override returns (address pool) {
+        pool = PoolAddressPancakeSwapV3.computeAddressSorted(deployer, poolKey);
+    }
+}
+
 contract SwapRouterTest is UniBase {
     using SafeTransferLib for address;
 
-    SwapRouterHandler internal router;
+    ISwapRouterHandler internal router;
     PoolKey internal poolKey;
-    address internal constant v3SwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    address internal v3SwapRouter;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
-        router = new SwapRouterHandler(npm);
+        v3SwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+        router = new UniV3SwapRouterHandler(npm);
         vm.label(address(router), "SwapRouter");
         vm.label(v3SwapRouter, "v3Router");
         poolKey = PoolAddress.getPoolKeySorted(token0, token1, fee);
@@ -238,5 +288,18 @@ contract SwapRouterTest is UniBase {
             if (mint(address(this), amount0, amount1, tickLower, tickUpper)) assertLittleLeftover();
         }
         assertZeroBalance(address(router));
+    }
+}
+
+contract PCSV3SwapRouterTest is SwapRouterTest {
+    function setUp() public virtual override {
+        npm = INPM(0x46A15B0b27311cedF172AB29E4f4766fbE7F4364);
+        UniBase.setUp();
+        v3SwapRouter = 0x1b81D678ffb9C0263b24A97847620C99d213eB14;
+        router = new PCSV3SwapRouterHandler(IPCSV3NonfungiblePositionManager(address(npm)));
+        vm.label(address(router), "SwapRouter");
+        vm.label(v3SwapRouter, "v3Router");
+        poolKey = PoolAddress.getPoolKeySorted(token0, token1, fee);
+        deal(address(this), 0);
     }
 }
