@@ -3,14 +3,24 @@ pragma solidity ^0.8.18;
 
 import "solady/src/utils/SafeTransferLib.sol";
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.sol";
+import "@pancakeswap/v3-core/contracts/interfaces/callback/IPancakeV3SwapCallback.sol";
 import {ERC20Callee} from "../libraries/ERC20Caller.sol";
 import {CallbackValidation} from "@aperture_finance/uni-v3-lib/src/CallbackValidation.sol";
-import {PoolAddress, PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
+import {CallbackValidationPancakeSwapV3} from "@aperture_finance/uni-v3-lib/src/CallbackValidationPancakeSwapV3.sol";
+import {INonfungiblePositionManager} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
+import {PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolKey.sol";
+import {PoolAddress} from "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
+import {PoolAddressPancakeSwapV3} from "@aperture_finance/uni-v3-lib/src/PoolAddressPancakeSwapV3.sol";
 import {TernaryLib} from "@aperture_finance/uni-v3-lib/src/TernaryLib.sol";
 import {OptimalSwap, TickMath, V3PoolCallee} from "../libraries/OptimalSwap.sol";
-import {Payments, UniV3Immutables} from "./Payments.sol";
+import {PCSV3Immutables, UniV3Immutables} from "./Immutables.sol";
+import {Payments} from "./Payments.sol";
 
-abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallback {
+/// @title Optimal Swap Router
+/// @author Aperture Finance
+/// @dev This router swaps through an aggregator to get to approximately the optimal ratio to add liquidity in a UniV3-style
+/// pool, then swaps the tokens to the optimal ratio to add liquidity in the same pool.
+abstract contract SwapRouter is Payments {
     using SafeTransferLib for address;
     using TernaryLib for bool;
     using TickMath for int24;
@@ -22,24 +32,10 @@ abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallbac
     uint160 internal constant XOR_SQRT_RATIO =
         (4295128739 + 1) ^ (1461446703485210103287273052203988822378723970342 - 1);
 
-    /// @inheritdoc IUniswapV3SwapCallback
-    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
-        // Only accept callbacks from an official Uniswap V3 pool
-        address pool = CallbackValidation.verifyCallbackCalldata(factory, data);
-        if (amount0Delta > 0) {
-            address token0;
-            assembly {
-                token0 := calldataload(data.offset)
-            }
-            pay(token0, address(this), pool, uint256(amount0Delta));
-        } else {
-            address token1;
-            assembly {
-                token1 := calldataload(add(data.offset, 0x20))
-            }
-            pay(token1, address(this), pool, uint256(amount1Delta));
-        }
-    }
+    /// @notice Deterministically computes the pool address given the pool key
+    /// @param poolKey The pool key
+    /// @return pool The contract address of the pool
+    function computeAddressSorted(PoolKey memory poolKey) internal view virtual returns (address pool) {}
 
     /// @dev Make a direct `exactIn` pool swap
     /// @param poolKey The pool key containing the token addresses and fee tier
@@ -121,7 +117,7 @@ abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallbac
             }
             ```
             knowing that `data.length == swapData.length - 20`.
-         */
+        */
         assembly ("memory-safe") {
             let fmp := mload(0x40)
             // Strip the first 20 bytes of `swapData` which is the router address.
@@ -157,7 +153,7 @@ abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallbac
         uint256 amount0Desired,
         uint256 amount1Desired
     ) internal returns (uint256 amount0, uint256 amount1) {
-        address pool = PoolAddress.computeAddressSorted(factory, poolKey);
+        address pool = computeAddressSorted(poolKey);
         (uint256 amountIn, , bool zeroForOne, ) = OptimalSwap.getOptimalSwap(
             V3PoolCallee.wrap(pool),
             tickLower,
@@ -193,9 +189,7 @@ abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallbac
         uint256 amount1Desired,
         bytes calldata swapData
     ) internal returns (uint256 amount0, uint256 amount1) {
-        (uint160 sqrtPriceX96, ) = V3PoolCallee
-            .wrap(PoolAddress.computeAddressSorted(factory, poolKey))
-            .sqrtPriceX96AndTick();
+        (uint160 sqrtPriceX96, ) = V3PoolCallee.wrap(computeAddressSorted(poolKey)).sqrtPriceX96AndTick();
         bool zeroForOne = OptimalSwap.isZeroForOne(
             amount0Desired,
             amount1Desired,
@@ -206,5 +200,55 @@ abstract contract SwapRouter is UniV3Immutables, Payments, IUniswapV3SwapCallbac
         _routerSwap(poolKey, router, zeroForOne, swapData);
         amount0 = ERC20Callee.wrap(poolKey.token0).balanceOf(address(this));
         amount1 = ERC20Callee.wrap(poolKey.token1).balanceOf(address(this));
+    }
+}
+
+abstract contract SwapRouterUniswapV3 is SwapRouter, UniV3Immutables, IUniswapV3SwapCallback {
+    /// @inheritdoc IUniswapV3SwapCallback
+    function uniswapV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+        // Only accept callbacks from an official Uniswap V3 pool
+        address pool = CallbackValidation.verifyCallbackCalldata(factory, data);
+        if (amount0Delta > 0) {
+            address token0;
+            assembly {
+                token0 := calldataload(data.offset)
+            }
+            pay(token0, address(this), pool, uint256(amount0Delta));
+        } else {
+            address token1;
+            assembly {
+                token1 := calldataload(add(data.offset, 0x20))
+            }
+            pay(token1, address(this), pool, uint256(amount1Delta));
+        }
+    }
+
+    function computeAddressSorted(PoolKey memory poolKey) internal view override returns (address pool) {
+        pool = PoolAddress.computeAddressSorted(factory, poolKey);
+    }
+}
+
+abstract contract SwapRouterPancakeSwapV3 is SwapRouter, PCSV3Immutables, IPancakeV3SwapCallback {
+    /// @inheritdoc IPancakeV3SwapCallback
+    function pancakeV3SwapCallback(int256 amount0Delta, int256 amount1Delta, bytes calldata data) external {
+        // Only accept callbacks from an official Uniswap V3 pool
+        address pool = CallbackValidationPancakeSwapV3.verifyCallbackCalldata(deployer, data);
+        if (amount0Delta > 0) {
+            address token0;
+            assembly {
+                token0 := calldataload(data.offset)
+            }
+            pay(token0, address(this), pool, uint256(amount0Delta));
+        } else {
+            address token1;
+            assembly {
+                token1 := calldataload(add(data.offset, 0x20))
+            }
+            pay(token1, address(this), pool, uint256(amount1Delta));
+        }
+    }
+
+    function computeAddressSorted(PoolKey memory poolKey) internal view override returns (address pool) {
+        pool = PoolAddressPancakeSwapV3.computeAddressSorted(deployer, poolKey);
     }
 }

@@ -7,13 +7,13 @@ import {PoolAddress, PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolAddress
 import {TernaryLib} from "@aperture_finance/uni-v3-lib/src/TernaryLib.sol";
 import {ERC20Callee} from "./libraries/ERC20Caller.sol";
 import {OptimalSwap, V3PoolCallee} from "./libraries/OptimalSwap.sol";
-import {Payments, SwapRouter, UniV3Immutables} from "./base/SwapRouter.sol";
+import {Payments, SwapRouterUniswapV3, UniV3Immutables} from "./base/SwapRouter.sol";
 
 /// @title Optimal Swap Router
 /// @author Aperture Finance
 /// @dev This router swaps through an aggregator to get to approximately the optimal ratio to add liquidity in a Uni V3
 /// pool, then swaps the tokens to the optimal ratio to add liquidity in the same pool.
-contract OptimalSwapRouter is UniV3Immutables, Payments, SwapRouter {
+contract OptimalSwapRouter is SwapRouterUniswapV3 {
     using SafeTransferLib for address;
     using TernaryLib for bool;
 
