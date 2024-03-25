@@ -136,20 +136,12 @@ abstract contract SwapRouterHandler is SwapRouter, Helper, ISwapRouterHandler {
     }
 }
 
-contract UniV3SwapRouterHandler is SwapRouterHandler, UniswapV3Callback {
+contract UniV3SwapRouterHandler is SwapRouterHandler, UniV3SwapRouter {
     constructor(INPM nonfungiblePositionManager) UniV3Immutables(nonfungiblePositionManager) {}
-
-    function computeAddressSorted(PoolKey memory poolKey) internal view override returns (address pool) {
-        pool = PoolAddress.computeAddressSorted(factory, poolKey);
-    }
 }
 
-contract PCSV3SwapRouterHandler is SwapRouterHandler, PancakeV3Callback {
+contract PCSV3SwapRouterHandler is SwapRouterHandler, PCSV3SwapRouter {
     constructor(IPCSV3NonfungiblePositionManager npm) PCSV3Immutables(npm) {}
-
-    function computeAddressSorted(PoolKey memory poolKey) internal view override returns (address pool) {
-        pool = PoolAddressPancakeSwapV3.computeAddressSorted(deployer, poolKey);
-    }
 }
 
 contract SwapRouterTest is UniBase {

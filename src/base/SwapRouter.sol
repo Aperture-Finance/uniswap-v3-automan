@@ -32,7 +32,7 @@ abstract contract SwapRouter is Payments {
     /// @notice Deterministically computes the pool address given the pool key
     /// @param poolKey The pool key
     /// @return pool The contract address of the pool
-    function computeAddressSorted(PoolKey memory poolKey) internal view virtual returns (address pool) {}
+    function computeAddressSorted(PoolKey memory poolKey) internal view virtual returns (address pool);
 
     /// @dev Make a direct `exactIn` pool swap
     /// @param poolKey The pool key containing the token addresses and fee tier
