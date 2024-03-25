@@ -2,22 +2,26 @@
 pragma solidity ^0.8.0;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
-import "src/UniV3OptimalSwapRouter.sol";
+import "src/PCSV3Automan.sol";
+import "src/PCSV3OptimalSwapRouter.sol";
 import "src/UniV3Automan.sol";
+import "src/UniV3OptimalSwapRouter.sol";
 import "./uniswap/UniHandler.sol";
 
 contract OptimalSwapRouterTest is UniHandler {
     using SafeTransferLib for address;
 
-    UniV3OptimalSwapRouter internal optimalSwapRouter;
-    address internal constant v3SwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
+    OptimalSwapRouter internal optimalSwapRouter;
+    address internal v3SwapRouter = 0xE592427A0AEce92De3Edee1F18E0157C05861564;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
-
         automan = new UniV3Automan(npm, address(this));
         optimalSwapRouter = new UniV3OptimalSwapRouter(npm);
+        setUpCommon();
+    }
 
+    function setUpCommon() internal {
         address[] memory routers = new address[](1);
         routers[0] = address(optimalSwapRouter);
         bool[] memory statuses = new bool[](1);
@@ -128,5 +132,17 @@ contract OptimalSwapRouterTest is UniHandler {
                     data
                 )
             );
+    }
+}
+
+contract PCSV3OptimalSwapRouterTest is OptimalSwapRouterTest {
+    function setUp() public override {
+        v3SwapRouter = 0x1b81D678ffb9C0263b24A97847620C99d213eB14;
+        npm = INPM(0x46A15B0b27311cedF172AB29E4f4766fbE7F4364);
+        UniBase.setUp();
+        IPCSV3NonfungiblePositionManager pcsnpm = IPCSV3NonfungiblePositionManager(address(npm));
+        automan = new PCSV3Automan(pcsnpm, address(this));
+        optimalSwapRouter = new PCSV3OptimalSwapRouter(pcsnpm);
+        setUpCommon();
     }
 }
