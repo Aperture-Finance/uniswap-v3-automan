@@ -2,6 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./uniswap/UniHandler.sol";
+import "src/PCSV3Automan.sol";
+import "src/UniV3Automan.sol";
 
 /// @dev Test contract for UniV3Automan
 contract UniV3AutomanTest is UniHandler {
@@ -13,12 +15,16 @@ contract UniV3AutomanTest is UniHandler {
     uint256 internal thisTokenId;
     uint256 internal userTokenId;
 
-    function setUp() public override {
+    uint24 internal newFee = 3000;
+
+    function setUp() public virtual override {
         super.setUp();
-
         automan = new UniV3Automan(npm, address(this));
-        vm.label(address(automan), "UniV3Automan");
+        setUpCommon();
+    }
 
+    function setUpCommon() internal {
+        vm.label(address(automan), "UniV3Automan");
         handler = new UniHandler();
         vm.label(address(handler), "UniHandler");
         handler.init(automan);
@@ -527,7 +533,6 @@ contract UniV3AutomanTest is UniHandler {
 
     /// @dev Test rebalancing a v3 LP position
     function testFuzz_Rebalance(int24 tickLower, int24 tickUpper) public {
-        uint24 newFee = 3000;
         tickSpacing = V3PoolCallee.wrap(factory.getPool(token0, token1, newFee)).tickSpacing();
         (tickLower, tickUpper) = prepTicks(tickLower, tickUpper);
         npm.setApprovalForAll(address(automan), true);
@@ -566,7 +571,6 @@ contract UniV3AutomanTest is UniHandler {
         uint256 tokenId = userTokenId;
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
-        uint24 newFee = 3000;
         tickSpacing = V3PoolCallee.wrap(factory.getPool(token0, token1, newFee)).tickSpacing();
         (tickLower, tickUpper) = prepTicks(tickLower, tickUpper);
         try
@@ -595,5 +599,15 @@ contract UniV3AutomanTest is UniHandler {
         {} catch Error(string memory reason) {
             assertEq(reason, "LO", "only catch liquidity overflow");
         }
+    }
+}
+
+contract PCSV3AutomanTest is UniV3AutomanTest {
+    function setUp() public override {
+        newFee = 500;
+        npm = INPM(0x46A15B0b27311cedF172AB29E4f4766fbE7F4364);
+        UniBase.setUp();
+        automan = new PCSV3Automan(IPCSV3NonfungiblePositionManager(address(npm)), address(this));
+        setUpCommon();
     }
 }

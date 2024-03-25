@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "src/UniV3Automan.sol";
+import "src/base/Automan.sol";
 import "./UniBase.sol";
 
 // https://book.getfoundry.sh/forge/invariant-testing#handler-based-testing
@@ -11,7 +11,7 @@ contract UniHandler is UniBase {
     using TickMath for int24;
     using EnumerableSet for EnumerableSet.UintSet;
 
-    UniV3Automan internal automan;
+    Automan internal automan;
     EnumerableSet.UintSet internal _tokenIds;
     mapping(bytes32 => uint256) internal calls;
 
@@ -35,7 +35,7 @@ contract UniHandler is UniBase {
         console2.log("swapBackAndForth", calls["swapBackAndForth"]);
     }
 
-    function init(UniV3Automan _automan) public {
+    function init(Automan _automan) public {
         initBeforeFork();
         initAfterFork();
         automan = _automan;
@@ -74,7 +74,7 @@ contract UniHandler is UniBase {
         }
     }
 
-    /// @dev Mint a v3 LP position through UniV3Automan
+    /// @dev Mint a v3 LP position through Automan
     function _mint(
         address recipient,
         int24 tickLower,
@@ -151,7 +151,7 @@ contract UniHandler is UniBase {
         }
     }
 
-    /// @dev Increase liquidity of a v3 LP position through UniV3Automan
+    /// @dev Increase liquidity of a v3 LP position through Automan
     function _increaseLiquidity(
         uint256 tokenId,
         uint256 amount0Desired,
@@ -214,7 +214,7 @@ contract UniHandler is UniBase {
         }
     }
 
-    /// @dev Decrease liquidity of a v3 LP position through UniV3Automan
+    /// @dev Decrease liquidity of a v3 LP position through Automan
     function _decreaseLiquidity(
         uint256 tokenId,
         uint128 liquidityDelta,
@@ -241,7 +241,7 @@ contract UniHandler is UniBase {
         );
     }
 
-    /// @dev Remove liquidity of a v3 LP position through UniV3Automan
+    /// @dev Remove liquidity of a v3 LP position through Automan
     function _removeLiquidity(uint256 tokenId, uint256 feePips) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = automan.removeLiquidity(
             INPM.DecreaseLiquidityParams({
@@ -348,7 +348,7 @@ contract UniHandler is UniBase {
      *  HANDLER FUNCTIONS
      ***********************************************/
 
-    /// @dev Mint a v3 LP position through UniV3Automan
+    /// @dev Mint a v3 LP position through Automan
     function mint(
         address recipient,
         int24 tickLower,
@@ -385,7 +385,7 @@ contract UniHandler is UniBase {
         }
     }
 
-    /// @dev Increase liquidity of a v3 LP position through UniV3Automan
+    /// @dev Increase liquidity of a v3 LP position through Automan
     function increaseLiquidity(
         uint256 tokenId,
         uint256 amount0Desired,
@@ -414,7 +414,7 @@ contract UniHandler is UniBase {
         }
     }
 
-    /// @dev Decrease liquidity of a v3 LP position through UniV3Automan
+    /// @dev Decrease liquidity of a v3 LP position through Automan
     function decreaseLiquidity(
         uint256 tokenId,
         uint128 liquidityDelta
@@ -451,7 +451,7 @@ contract UniHandler is UniBase {
         }
     }
 
-    /// @dev Remove liquidity of a v3 LP position through UniV3Automan
+    /// @dev Remove liquidity of a v3 LP position through Automan
     function removeLiquidity(uint256 tokenId) public returns (uint256 amount0, uint256 amount1) {
         tokenId = selectTokenId(tokenId);
         if (tokenId != 0) {
@@ -515,7 +515,7 @@ contract UniHandler is UniBase {
         }
     }
 
-    /// @dev Rebalance a v3 LP position through UniV3Automan
+    /// @dev Rebalance a v3 LP position through Automan
     function rebalance(uint256 tokenId, int24 tickLower, int24 tickUpper) public returns (uint256 newTokenId) {
         tokenId = selectTokenId(tokenId);
         if (tokenId != 0) {
