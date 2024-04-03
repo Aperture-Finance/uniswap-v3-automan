@@ -33,7 +33,6 @@ Include an `.env` file at the root directory and consider adding the following e
 
 ```shell
 PRIVATE_KEY="" # used as the contract deployer.
-GOERLI_RPC_URL="" # if using ethereum goerli.
 MAINNET_RPC_URL="" # if using ethereum mainnet.
 ARBITRUM_RPC_URL="" # if using arbitrum mainnet.
 OPTIMISM_RPC_URL="" # if using optimism mainnet.
@@ -84,13 +83,13 @@ To simulate scripts, we can pass in `--fork-url <network>` to `forge script`. Th
 `rpc_endpoints` defined in [`foundry.toml`](foundry.toml) or an url to a node.
 
 ```shell
-forge script DeployAutoman --fork-url goerli -vvvv
+forge script DeployUniV3Automan --fork-url [NETWORK_NAME] -vvvv
 ```
 
 To run broadcast transactions on-chain, use:
 
 ```shell
-forge script DeployAutoman --rpc-url goerli --broadcast -vvvv
+forge script DeployUniV3Automan --rpc-url [NETWORK_NAME] --broadcast -vvvv
 ```
 
 ## Deployment
@@ -100,7 +99,7 @@ We use https://github.com/pcaversaccio/create2deployer to deploy contracts. If t
 First, dry-run the deployment script on a local fork to get the `initCodeHash` of `UniV3Automan` contract:
 
 ```shell
-forge script DeployAutoman --fork-url [NETWORK_NAME] -vvvv
+forge script DeployUniV3Automan --fork-url [NETWORK_NAME] -vvvv
 ```
 
 The output of the above command should contain text like "Automan initCodeHash: 0xbafd4e1d1ff7f7979102d9e80884c2a93d0e1160dae77b5f88e9bca95eb5e4d0".
@@ -121,9 +120,9 @@ You should see rows like
 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b2000061fb0dd => 0x00006C2eEC8d3AC8720D65e400fe0079C32eee5A => 2
 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b6000064122f4 => 0x0000000054D52974711c14aB458780886579167F => 256
 ```
-being generated. The bytes starting with "0xbeef" are salts, and the corresponding contract addresses are shown to their right. When a desired address has been mined, stop the create2crunch script and update `script/DeployAutoman.s.sol` with the mined salt.
+being generated. The bytes starting with "0xbeef" are salts, and the corresponding contract addresses are shown to their right. When a desired address has been mined, stop the create2crunch script and update `script/DeployUniV3Automan.s.sol` with the mined salt.
 
-Re-simulate `DeployAutoman` with a dry-run to verify that the deployment address matches expectation, and broadcast the transaction on-chain.
+Re-simulate `DeployUniV3Automan` with a dry-run to verify that the deployment address matches expectation, and broadcast the transaction on-chain.
 
 
 ## Verification
@@ -133,6 +132,8 @@ Generate the standard JSON input and verify the contract on Etherscan with it:
 ```shell
 forge verify-contract 0x00000000Ede6d8D217c60f93191C060747324bca UniV3Automan --optimizer-runs 4194304 --constructor-args 0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88000000000000000000000000beef63ae5a2102506e8a352a5bb32aa8b30b3112 --show-standard-json-input > etherscan.json
 ```
+
+Constructor args can be encoded easily using an online ABI tool like https://abi.hashex.org. The above example shows `UniV3Automan` constructor args consisting of the nonfungible position manager contract address followed by the deployer address as the temporary Automan owner during deployment.
 
 **Deployed Contracts**
 
