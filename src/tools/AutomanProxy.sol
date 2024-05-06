@@ -25,7 +25,7 @@ interface Automan {
 }
 
 contract AutomanRelayerProxy is Ownable, Automan {
-    mapping(address=>mapping(address=>bool)) public allowance;
+    mapping(address => mapping(address => bool)) public allowance;
     INPM public npm;
     Automan public automan;
     constructor(INPM _npm, Automan _automan) Ownable(msg.sender) {
@@ -36,8 +36,8 @@ contract AutomanRelayerProxy is Ownable, Automan {
     function setAllowance(address[] calldata relayers, address[] calldata owners, bool value) external onlyOwner {
         uint lrelayer = relayers.length;
         uint lowners = owners.length;
-        for(uint i = 0; i < lrelayer; i ++ ) {
-            for (uint j = 0; j < lowners; j ++) {
+        for (uint i = 0; i < lrelayer; i++) {
+            for (uint j = 0; j < lowners; j++) {
                 allowance[relayers[i]][owners[j]] = value;
             }
         }
