@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
 
 interface Automan {
-
     function increaseLiquidity(
         INPM.IncreaseLiquidityParams memory params
     ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1);
@@ -14,7 +13,7 @@ interface Automan {
         INPM.IncreaseLiquidityParams memory params,
         bytes calldata swapData
     ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1);
-    
+
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
         uint256 feePips
@@ -46,7 +45,7 @@ interface Automan {
         bytes32 r,
         bytes32 s
     ) external returns (uint256 amount);
-    
+
     function rebalance(
         INPM.MintParams memory params,
         uint256 tokenId,
