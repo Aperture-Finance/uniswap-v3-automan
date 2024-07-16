@@ -3,6 +3,7 @@ pragma solidity ^0.8.18;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
+import { IAutoman } from "../interfaces/IAutoman.sol";
 
 interface Automan {
     function increaseLiquidity(
@@ -136,6 +137,11 @@ contract AutomanRelayerProxy is Ownable, Automan {
         npm = _npm;
     }
 
+    modifier onlyAllowedRelayer(uint256 tokenId) {
+        require(allowance[msg.sender][npm.ownerOf(tokenId)], "not allow relayer");
+        _;
+    }
+    
     function rebalance(
         INPM.MintParams memory params,
         uint256 tokenId,
@@ -145,9 +151,7 @@ contract AutomanRelayerProxy is Ownable, Automan {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(tokenId) returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         return automan.rebalance(params, tokenId, feePips, swapData, permitDeadline, v, r, s);
     }
 
@@ -156,38 +160,27 @@ contract AutomanRelayerProxy is Ownable, Automan {
         uint256 tokenId,
         uint256 feePips,
         bytes calldata swapData
-    ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(tokenId) returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         return automan.rebalance(params, tokenId, feePips, swapData);
     }
 
     function increaseLiquidity(
         INPM.IncreaseLiquidityParams memory params
-    ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external payable onlyAllowedRelayer(params.tokenId) returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         return automan.increaseLiquidity(params);
     }
 
     function increaseLiquidityOptimal(
         INPM.IncreaseLiquidityParams memory params,
         bytes calldata swapData
-    ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external payable onlyAllowedRelayer(params.tokenId) returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         return automan.increaseLiquidityOptimal(params, swapData);
     }
 
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
         uint256 feePips
-    ) external returns (uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint256 amount0, uint256 amount1) {
         return automan.decreaseLiquidity(params, feePips);
     }
 
@@ -198,10 +191,7 @@ contract AutomanRelayerProxy is Ownable, Automan {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint256 amount0, uint256 amount1) {
         return automan.decreaseLiquidity(params, feePips, permitDeadline, v, r, s);
     }
 
@@ -210,10 +200,7 @@ contract AutomanRelayerProxy is Ownable, Automan {
         bool zeroForOne,
         uint256 feePips,
         bytes calldata swapData
-    ) external returns (uint256 amount) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint256 amount) {
         return automan.decreaseLiquiditySingle(params, zeroForOne, feePips, swapData);
     }
 
@@ -226,20 +213,14 @@ contract AutomanRelayerProxy is Ownable, Automan {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 amount) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint256 amount) {
         return automan.decreaseLiquiditySingle(params, zeroForOne, feePips, swapData, permitDeadline, v, r, s);
     }
 
     function removeLiquidity(
         INPM.DecreaseLiquidityParams memory params,
         uint256 feePips
-    ) external returns (uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint256 amount0, uint256 amount1) {
         return automan.removeLiquidity(params, feePips);
     }
 
@@ -250,10 +231,7 @@ contract AutomanRelayerProxy is Ownable, Automan {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint256 amount0, uint256 amount1) {
         return automan.removeLiquidity(params, feePips, permitDeadline, v, r, s);
     }
 
@@ -262,10 +240,7 @@ contract AutomanRelayerProxy is Ownable, Automan {
         bool zeroForOne,
         uint256 feePips,
         bytes calldata swapData
-    ) external returns (uint256 amount) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint256 amount) {
         return automan.removeLiquiditySingle(params, zeroForOne, feePips, swapData);
     }
 
@@ -278,10 +253,7 @@ contract AutomanRelayerProxy is Ownable, Automan {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 amount) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint256 amount) {
         return automan.removeLiquiditySingle(params, zeroForOne, feePips, swapData, permitDeadline, v, r, s);
     }
 
@@ -289,10 +261,7 @@ contract AutomanRelayerProxy is Ownable, Automan {
         INPM.IncreaseLiquidityParams memory params,
         uint256 feePips,
         bytes calldata swapData
-    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         return automan.reinvest(params, feePips, swapData);
     }
 
@@ -304,10 +273,7 @@ contract AutomanRelayerProxy is Ownable, Automan {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        address owner = npm.ownerOf(tokenId);
-        require(allowance[msg.sender][owner], "not allow relayer");
+    ) external onlyAllowedRelayer(params.tokenId) returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         return automan.reinvest(params, feePips, swapData, permitDeadline, v, r, s);
     }
 }
