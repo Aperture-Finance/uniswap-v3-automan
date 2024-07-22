@@ -5,7 +5,7 @@ import "forge-std/Script.sol";
 import "./ICreate2Deployer.sol";
 import "../src/UniV3OptimalSwapRouter.sol";
 import "../src/RouterProxy.sol";
-import "../src/UniV3Automan.sol";
+import {UniV3Automan} from "../src/UniV3Automan.sol";
 
 contract DeployUniV3Automan is Script {
     struct DeployParams {

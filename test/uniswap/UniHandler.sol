@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "forge-std/Test.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "src/base/Automan.sol";
-import "./UniBase.sol";
+import {UniBase} from "./UniBase.sol";
 
 // https://book.getfoundry.sh/forge/invariant-testing#handler-based-testing
 contract UniHandler is UniBase {
@@ -91,7 +92,7 @@ contract UniHandler is UniBase {
         if (ok)
             try
                 automan.mint{value: value}(
-                    INPM.MintParams({
+                    IUniV3NPM.MintParams({
                         token0: token0,
                         token1: token1,
                         fee: fee,
@@ -128,7 +129,7 @@ contract UniHandler is UniBase {
         uint256 value = handleWETH(amount0Desired, amount1Desired);
         try
             automan.mintOptimal{value: value}(
-                INPM.MintParams({
+                IUniV3NPM.MintParams({
                     token0: token0,
                     token1: token1,
                     fee: fee,
@@ -325,7 +326,7 @@ contract UniHandler is UniBase {
         uint256 feePips
     ) internal returns (uint256 newTokenId) {
         (newTokenId, , , ) = automan.rebalance(
-            INPM.MintParams({
+            IUniV3NPM.MintParams({
                 token0: token0,
                 token1: token1,
                 fee: fee,
@@ -421,7 +422,7 @@ contract UniHandler is UniBase {
     ) public returns (uint256 amount0, uint256 amount1) {
         tokenId = selectTokenId(tokenId);
         if (tokenId != 0) {
-            (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+            (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
             if (liquidity != 0) {
                 liquidityDelta = uint128(bound(liquidityDelta, 1, liquidity));
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
@@ -440,7 +441,7 @@ contract UniHandler is UniBase {
     ) public returns (uint256 amount) {
         tokenId = selectTokenId(tokenId);
         if (tokenId != 0) {
-            (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+            (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
             if (liquidity != 0) {
                 liquidityDelta = uint128(bound(liquidityDelta, 1, liquidity));
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
@@ -455,7 +456,7 @@ contract UniHandler is UniBase {
     function removeLiquidity(uint256 tokenId) public returns (uint256 amount0, uint256 amount1) {
         tokenId = selectTokenId(tokenId);
         if (tokenId != 0) {
-            (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+            (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
             if (liquidity != 0) {
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
                 npm.approve(address(automan), tokenId);
@@ -470,7 +471,7 @@ contract UniHandler is UniBase {
     function removeLiquiditySingle(uint256 tokenId, bool zeroForOne) public returns (uint256 amount) {
         tokenId = selectTokenId(tokenId);
         if (tokenId != 0) {
-            (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+            (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
             if (liquidity != 0) {
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
                 npm.approve(address(automan), tokenId);
@@ -498,7 +499,7 @@ contract UniHandler is UniBase {
                 uint256 feeGrowthInside1LastX128,
                 ,
 
-            ) = npm.positions(tokenId);
+            ) = IUniV3NPM(address(npm)).positions(tokenId);
             vm.prank(address(npm));
             IUniswapV3Pool(pool).burn(tickLower, tickUpper, 0);
             (, uint256 _feeGrowthInside0LastX128, uint256 _feeGrowthInside1LastX128, , ) = IUniswapV3Pool(pool)

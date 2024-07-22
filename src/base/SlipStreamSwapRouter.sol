@@ -3,8 +3,7 @@ pragma solidity ^0.8.18;
 
 import "solady/src/utils/SafeTransferLib.sol";
 import {ERC20Callee} from "../libraries/ERC20Caller.sol";
-import {PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolKey.sol";
-import {PoolAddress} from "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
+import "../libraries/SlipStreamPoolAddress.sol";
 import {PoolAddressPancakeSwapV3} from "@aperture_finance/uni-v3-lib/src/PoolAddressPancakeSwapV3.sol";
 import {TernaryLib} from "@aperture_finance/uni-v3-lib/src/TernaryLib.sol";
 import {OptimalSwap, TickMath, V3PoolCallee} from "../libraries/OptimalSwap.sol";
@@ -16,7 +15,7 @@ import "./Callback.sol";
 /// @author Aperture Finance
 /// @dev This router swaps through an aggregator to get to approximately the optimal ratio to add liquidity in a UniV3-style
 /// pool, then swaps the tokens to the optimal ratio to add liquidity in the same pool.
-abstract contract SwapRouter is Payments {
+abstract contract SlipStreamSwapRouter is Payments, UniswapV3Callback {
     using SafeTransferLib for address;
     using TernaryLib for bool;
     using TickMath for int24;
@@ -31,7 +30,9 @@ abstract contract SwapRouter is Payments {
     /// @notice Deterministically computes the pool address given the pool key
     /// @param poolKey The pool key
     /// @return pool The contract address of the pool
-    function computeAddressSorted(PoolKey memory poolKey) internal view virtual returns (address pool);
+    function computeAddressSorted(SlipStreamPoolAddress.PoolKey memory poolKey) internal view returns (address pool) {
+        pool = SlipStreamPoolAddress.computeAddressSorted(factory, poolKey);
+    }
 
     /// @dev Make a direct `exactIn` pool swap
     /// @param poolKey The pool key containing the token addresses and fee tier
@@ -40,7 +41,7 @@ abstract contract SwapRouter is Payments {
     /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
     /// @return amountOut The amount of token received after swap
     function _poolSwap(
-        PoolKey memory poolKey,
+        SlipStreamPoolAddress.PoolKey memory poolKey,
         address pool,
         uint256 amountIn,
         bool zeroForOne
@@ -83,7 +84,7 @@ abstract contract SwapRouter is Payments {
     /// @param swapData The address of the external router and call data, not abi-encoded
     /// @return amountOut The amount of token received after swap
     function _routerSwap(
-        PoolKey memory poolKey,
+        SlipStreamPoolAddress.PoolKey memory poolKey,
         address router,
         bool zeroForOne,
         bytes calldata swapData
@@ -143,7 +144,7 @@ abstract contract SwapRouter is Payments {
     /// @return amount0 The amount of token0 after swap
     /// @return amount1 The amount of token1 after swap
     function _optimalSwapWithPool(
-        PoolKey memory poolKey,
+        SlipStreamPoolAddress.PoolKey memory poolKey,
         int24 tickLower,
         int24 tickUpper,
         uint256 amount0Desired,
@@ -177,7 +178,7 @@ abstract contract SwapRouter is Payments {
     /// @return amount0 The amount of token0 after swap
     /// @return amount1 The amount of token1 after swap
     function _optimalSwapWithRouter(
-        PoolKey memory poolKey,
+        SlipStreamPoolAddress.PoolKey memory poolKey,
         address router,
         int24 tickLower,
         int24 tickUpper,
@@ -196,17 +197,5 @@ abstract contract SwapRouter is Payments {
         _routerSwap(poolKey, router, zeroForOne, swapData);
         amount0 = ERC20Callee.wrap(poolKey.token0).balanceOf(address(this));
         amount1 = ERC20Callee.wrap(poolKey.token1).balanceOf(address(this));
-    }
-}
-
-abstract contract UniV3SwapRouter is SwapRouter, UniswapV3Callback {
-    function computeAddressSorted(PoolKey memory poolKey) internal view override returns (address pool) {
-        pool = PoolAddress.computeAddressSorted(factory, poolKey);
-    }
-}
-
-abstract contract PCSV3SwapRouter is SwapRouter, PancakeV3Callback {
-    function computeAddressSorted(PoolKey memory poolKey) internal view override returns (address pool) {
-        pool = PoolAddressPancakeSwapV3.computeAddressSorted(deployer, poolKey);
     }
 }

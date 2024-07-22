@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity ^0.8.18;
 
-import {INonfungiblePositionManager as INPM, IPCSV3NonfungiblePositionManager as IPCSV3NPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
+import {ICommonNonfungiblePositionManager as INPM, IPCSV3NonfungiblePositionManager as IPCSV3NPM} from "@aperture_finance/uni-v3-lib/src/interfaces/IPCSV3NonfungiblePositionManager.sol";
 import "../interfaces/IImmutables.sol";
 
 /// @title Immutable state

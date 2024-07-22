@@ -369,19 +369,19 @@ library OptimalSwap {
                         revert(0x1c, 0x04)
                     }
                 }
-                b = a0.mulDiv96(sqrtRatioLowerX96);
+                b = a0.mulDivQ96(sqrtRatioLowerX96);
                 assembly {
                     b := add(div(mul(feePips, liquidity), FEE_COMPLEMENT), b)
                 }
             }
             {
                 // c = amount1Desired + liquidity * sqrtPrice - liquidity * sqrtRatioLower / (1 - f)
-                uint256 c0 = liquidity.mulDiv96(sqrtPriceX96);
+                uint256 c0 = liquidity.mulDivQ96(sqrtPriceX96);
                 assembly ("memory-safe") {
                     // c0 = amount1Desired + liquidity * sqrtPrice
                     c0 := add(mload(add(state, 0x80)), c0)
                 }
-                c = c0 - liquidity.mulDiv96((MAX_FEE_PIPS * sqrtRatioLowerX96) / FEE_COMPLEMENT);
+                c = c0 - liquidity.mulDivQ96((MAX_FEE_PIPS * sqrtRatioLowerX96) / FEE_COMPLEMENT);
                 b -= c0.mulDiv(FixedPoint96.Q96, sqrtRatioUpperX96);
             }
             assembly {
@@ -451,14 +451,14 @@ library OptimalSwap {
                     a0 := add(mload(add(state, 0x60)), div(liquidityX96, sqrtPriceX96))
                     a := sub(a0, div(mul(MAX_FEE_PIPS, liquidityX96), mul(FEE_COMPLEMENT, sqrtRatioUpperX96)))
                 }
-                b = a0.mulDiv96(sqrtRatioLowerX96);
+                b = a0.mulDivQ96(sqrtRatioLowerX96);
                 assembly {
                     b := sub(b, div(mul(feePips, liquidity), FEE_COMPLEMENT))
                 }
             }
             {
                 // c = amount1Desired + liquidity * sqrtPrice / (1 - f) - liquidity * sqrtRatioLower
-                uint256 c0 = liquidity.mulDiv96((MAX_FEE_PIPS * sqrtPriceX96) / FEE_COMPLEMENT);
+                uint256 c0 = liquidity.mulDivQ96((MAX_FEE_PIPS * sqrtPriceX96) / FEE_COMPLEMENT);
                 uint256 amount1Desired;
                 assembly ("memory-safe") {
                     // amount1Desired = state.amount1Desired
@@ -466,7 +466,7 @@ library OptimalSwap {
                     // c0 = amount1Desired + liquidity * sqrtPrice / (1 - f)
                     c0 := add(amount1Desired, c0)
                 }
-                c = c0 - liquidity.mulDiv96(sqrtRatioLowerX96);
+                c = c0 - liquidity.mulDivQ96(sqrtRatioLowerX96);
                 assembly ("memory-safe") {
                     // `c` is always positive and greater than `amount1Desired`.
                     if iszero(gt(c, amount1Desired)) {
@@ -521,7 +521,7 @@ library OptimalSwap {
         //     = liquidity * (sqrt(current) - sqrt(lower)) * amount0
         unchecked {
             return
-                amount0Desired.mulDiv96(sqrtPriceX96).mulDiv96(sqrtPriceX96 - sqrtRatioLowerX96) >
+                amount0Desired.mulDivQ96(sqrtPriceX96).mulDivQ96(sqrtPriceX96 - sqrtRatioLowerX96) >
                 amount1Desired.mulDiv(sqrtRatioUpperX96 - sqrtPriceX96, sqrtRatioUpperX96);
         }
     }

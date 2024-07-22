@@ -14,12 +14,12 @@
     "typechain": "hardhat typechain"
   },
   "dependencies": {
-    "@aperture_finance/uni-v3-lib": "^2.0.1",
+    "@aperture_finance/uni-v3-lib": "3.0.0-alpha",
     "@openzeppelin/contracts": "^5.0.2",
     "@pancakeswap/v3-core": "^1.0.2",
     "@uniswap/v3-core": "^1.0.1",
     "@uniswap/v3-periphery": "^1.4.4",
-    "solady": "^0.0.180"
+    "solady": "^0.0.226"
   },
   "devDependencies": {
     "@ethersproject/abi": "5.7.0",

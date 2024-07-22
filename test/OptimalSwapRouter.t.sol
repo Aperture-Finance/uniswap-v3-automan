@@ -3,9 +3,10 @@ pragma solidity ^0.8.0;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "src/PCSV3Automan.sol";
-import "src/PCSV3OptimalSwapRouter.sol";
 import "src/UniV3Automan.sol";
-import "src/UniV3OptimalSwapRouter.sol";
+import {OptimalSwapRouter} from "src/base/OptimalSwapRouter.sol";
+import {PCSV3OptimalSwapRouter} from "src/PCSV3OptimalSwapRouter.sol";
+import {UniV3OptimalSwapRouter} from "src/UniV3OptimalSwapRouter.sol";
 import "./uniswap/UniHandler.sol";
 
 contract OptimalSwapRouterTest is UniHandler {

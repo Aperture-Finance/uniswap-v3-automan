@@ -111,7 +111,7 @@ contract UniV3AutomanTest is UniHandler {
         routers[0] = address(npm);
         bool[] memory statuses = new bool[](1);
         statuses[0] = true;
-        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
     }
 
@@ -121,10 +121,10 @@ contract UniV3AutomanTest is UniHandler {
         routers[0] = address(WETH);
         bool[] memory statuses = new bool[](1);
         statuses[0] = true;
-        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
         routers[0] = address(USDC);
-        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
     }
 
@@ -134,9 +134,9 @@ contract UniV3AutomanTest is UniHandler {
         deal(amount0Desired, amount1Desired);
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
-        vm.expectRevert(IAutoman.NotWhitelistedRouter.selector);
+        vm.expectRevert(IAutomanCommon.NotWhitelistedRouter.selector);
         automan.mintOptimal(
-            INPM.MintParams({
+            IUniV3NPM.MintParams({
                 token0: token0,
                 token1: token1,
                 fee: fee,
@@ -161,24 +161,24 @@ contract UniV3AutomanTest is UniHandler {
         // `user` is not the owner or controller.
         assertTrue(!automan.isController(user));
         vm.startPrank(user);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _decreaseLiquidity(tokenId, 1, 0);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _decreaseLiquiditySingle(tokenId, 1, true, 0);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _removeLiquidity(tokenId, 0);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _removeLiquiditySingle(tokenId, true, 0);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _reinvest(tokenId, 1e12);
         (tickLower, tickUpper) = prepTicks(0, 100);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _rebalance(tokenId, tickLower, tickUpper, 1e12);
     }
 
     /// @dev Should revert if the fee is greater than the limit
     function testRevert_FeeLimitExceeded() public {
-        vm.expectRevert(IAutoman.FeeLimitExceeded.selector);
+        vm.expectRevert(IAutomanCommon.FeeLimitExceeded.selector);
         _decreaseLiquidity(thisTokenId, 1, 1e17);
     }
 
@@ -220,7 +220,7 @@ contract UniV3AutomanTest is UniHandler {
         token1.safeApprove(address(automan), type(uint256).max);
         vm.expectRevert();
         automan.mint(
-            INPM.MintParams({
+            IUniV3NPM.MintParams({
                 token0: token1,
                 token1: token0,
                 fee: fee,
@@ -287,7 +287,7 @@ contract UniV3AutomanTest is UniHandler {
         token1.safeApprove(address(automan), type(uint256).max);
         vm.expectRevert(OptimalSwap.Invalid_Pool.selector);
         automan.mintOptimal(
-            INPM.MintParams({
+            IUniV3NPM.MintParams({
                 token0: token1,
                 token1: token0,
                 fee: fee,
@@ -345,7 +345,7 @@ contract UniV3AutomanTest is UniHandler {
     /// @dev Test decreasing liquidity of a v3 LP position
     function testFuzz_DecreaseLiquidity(uint128 liquidityDesired) public {
         uint256 tokenId = thisTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 balance0Before = balanceOf(token0, address(this));
         uint256 balance1Before = balanceOf(token1, address(this));
@@ -359,14 +359,14 @@ contract UniV3AutomanTest is UniHandler {
     function testRevert_TooMuchFee() public {
         uint256 tokenId = thisTokenId;
         npm.approve(address(automan), tokenId);
-        vm.expectRevert(IAutoman.InsufficientAmount.selector);
+        vm.expectRevert(IAutomanCommon.InsufficientAmount.selector);
         _decreaseLiquidity(tokenId, 10, 1e16);
     }
 
     /// @dev Decreasing liquidity with permit
     function testFuzz_DecreaseLiquidity_WithPermit(uint128 liquidityDesired) public {
         uint256 tokenId = userTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
@@ -383,7 +383,7 @@ contract UniV3AutomanTest is UniHandler {
     /// @dev Test decreasing liquidity of a v3 LP position and withdrawing a single token
     function testFuzz_DecreaseLiquiditySingle(uint128 liquidityDesired, bool zeroForOne) public {
         uint256 tokenId = thisTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 balanceBefore = zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this));
         // Approve automan to decrease liquidity
@@ -399,7 +399,7 @@ contract UniV3AutomanTest is UniHandler {
     /// @dev Decreasing liquidity with permit
     function testFuzz_DecreaseLiquiditySingle_WithPermit(uint128 liquidityDesired, bool zeroForOne) public {
         uint256 tokenId = thisTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
@@ -538,7 +538,7 @@ contract UniV3AutomanTest is UniHandler {
         npm.setApprovalForAll(address(automan), true);
         try
             automan.rebalance(
-                INPM.MintParams({
+                IUniV3NPM.MintParams({
                     token0: token0,
                     token1: token1,
                     fee: newFee,
@@ -575,7 +575,7 @@ contract UniV3AutomanTest is UniHandler {
         (tickLower, tickUpper) = prepTicks(tickLower, tickUpper);
         try
             automan.rebalance(
-                INPM.MintParams({
+                IUniV3NPM.MintParams({
                     token0: token0,
                     token1: token1,
                     fee: newFee,
