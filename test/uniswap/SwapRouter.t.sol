@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "src/base/SwapRouter.sol";
-import "./UniBase.sol";
+import {Helper, TickBitmap, TickMath, V3PoolCallee, UniBase} from "./UniBase.sol";
+import {IPCSV3NonfungiblePositionManager} from "@aperture_finance/uni-v3-lib/src/interfaces/IPCSV3NonfungiblePositionManager.sol";
 
 interface ISwapRouterHandler {
     function poolSwap(

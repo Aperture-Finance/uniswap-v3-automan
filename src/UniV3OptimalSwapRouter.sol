@@ -8,5 +8,5 @@ import "./base/OptimalSwapRouter.sol";
 /// @dev This router swaps through an aggregator to get to approximately the optimal ratio to add liquidity in a UniV3
 /// pool, then swaps the tokens to the optimal ratio to add liquidity in the same pool.
 contract UniV3OptimalSwapRouter is UniV3SwapRouter, OptimalSwapRouter {
-    constructor(INonfungiblePositionManager npm) payable UniV3Immutables(npm) {}
+    constructor(ICommonNonfungiblePositionManager npm) payable UniV3Immutables(npm) {}
 }

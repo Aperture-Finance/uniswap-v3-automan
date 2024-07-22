@@ -2,10 +2,10 @@
 # yarn lockfile v1
 
 
-"@aperture_finance/uni-v3-lib@^2.0.1":
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/@aperture_finance/uni-v3-lib/-/uni-v3-lib-2.0.1.tgz#60a6f32a523a08491f884a39610fb224b1636b5f"
-  integrity sha512-m7R34aVy7WBGAOnA3Jw1uGVLUc1UoicN4nFoecFaTQcRz/INho9FF7KhvL7TbPqi3CUzSTkgntK+NSjo0tiVqA==
+"@aperture_finance/uni-v3-lib@3.0.0-alpha":
+  version "3.0.0-alpha"
+  resolved "https://registry.yarnpkg.com/@aperture_finance/uni-v3-lib/-/uni-v3-lib-3.0.0-alpha.tgz#b542d730641cbd477eceddc4b633dae98d73f4aa"
+  integrity sha512-GJe5wEPKgP25z3eoMqrfRuCFOnebn5dk6cfLj3hqnPHAjcAYgT5IUt4yPI+ba0lpEgQiybQIkK67IAoeq/lhRQ==
   dependencies:
     "@openzeppelin/contracts" "^5.0.2"
     "@pancakeswap/v3-core" "^1.0.2"
@@ -2198,6 +2198,11 @@ solady@^0.0.180:
   version "0.0.180"
   resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.180.tgz#d806c84a0bf8b6e3d85a8fb0978980de086ff59e"
   integrity sha512-9QVCyMph+wk78Aq/GxtDAQg7dvNoVWx2dS2Zwf11XlwFKDZ+YJG2lrQsK9NEIth9NOebwjBXAYk4itdwOOE4aw==
+
+solady@^0.0.226:
+  version "0.0.226"
+  resolved "https://registry.yarnpkg.com/solady/-/solady-0.0.226.tgz#21474259b5fd13e0a675430783b55439250edc92"
+  integrity sha512-3WSNr3ljJWZbXg0md2FPeqxRuIb1KdAcGilHXksEppKDP+7JL5Z2GHuCCviEerK5yn/OaJnrq56o25e+wtcAzA==
 
 solc@0.7.3:
   version "0.7.3"

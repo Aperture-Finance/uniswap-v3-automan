@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "forge-std/Test.sol";
+import "forge-std/interfaces/IERC20.sol";
 import "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
 import "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
-import "./UniBase.sol";
+import {TickBitmap, TickMath, UniBase, V3PoolCallee} from "./UniBase.sol";
+import {OptimalSwap} from "src/libraries/OptimalSwap.sol";
 
 contract OptimalSwapTest is UniBase {
     // Homora Uniswap v3 OptimalSwap

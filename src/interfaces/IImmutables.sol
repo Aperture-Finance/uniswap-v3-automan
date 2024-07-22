@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity >=0.8.0;
 
-import "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
+import "@aperture_finance/uni-v3-lib/src/interfaces/ICommonNonfungiblePositionManager.sol";
 
 /// @title Immutables of the UniV3-style DEX Automation Manager
 interface IImmutables {
     /// @notice Uniswap v3 Position Manager
-    function npm() external view returns (INonfungiblePositionManager);
+    function npm() external view returns (ICommonNonfungiblePositionManager);
 
     /// @return Returns the address of WETH9
     function WETH9() external view returns (address payable);

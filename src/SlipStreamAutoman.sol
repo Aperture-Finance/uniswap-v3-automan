@@ -1,23 +1,24 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity ^0.8.18;
+pragma solidity ^0.8.22;
 
 import "solady/src/utils/SafeTransferLib.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import {ICommonNonfungiblePositionManager as INPM, IUniswapV3NonfungiblePositionManager as IUniV3NPM} from "@aperture_finance/uni-v3-lib/src/interfaces/IUniswapV3NonfungiblePositionManager.sol";
+import {ICommonNonfungiblePositionManager as INPM, ISlipStreamNonfungiblePositionManager as ISlipStreamNPM} from "@aperture_finance/uni-v3-lib/src/interfaces/ISlipStreamNonfungiblePositionManager.sol";
 import {LiquidityAmounts} from "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
-import {NPMCaller, Position} from "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
-import {PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolKey.sol";
-import {SwapRouter} from "./SwapRouter.sol";
-import {IAutomanCommon, IAutomanUniV3MintRebalance} from "../interfaces/IAutoman.sol";
-import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "../libraries/OptimalSwap.sol";
+import {NPMCaller, SlipStreamPosition} from "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
+import {SlipStreamSwapRouter} from "./base/SlipStreamSwapRouter.sol";
+import {SlipStreamPoolAddress} from "./libraries/SlipStreamPoolAddress.sol";
+import {IAutomanCommon, IAutomanSlipStreamMintRebalance} from "./interfaces/IAutoman.sol";
+import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "./libraries/OptimalSwap.sol";
+import {UniV3Immutables} from "./base/Immutables.sol";
 
 /// @title Automation manager for UniV3-like liquidity positions with built-in optimal swap algorithm
 /// @author Aperture Finance
 /// @dev The validity of the tokens in `poolKey` and the pool contract computed from it is not checked here.
 /// However if they are invalid, pool `swap`, `burn` and `mint` will revert here or in `NonfungiblePositionManager`.
-abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3MintRebalance {
+contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAutomanSlipStreamMintRebalance {
     using SafeTransferLib for address;
     using FullMath for uint256;
     using TickMath for int24;
@@ -127,32 +128,36 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
      *  GETTERS
      ***********************************************/
 
-    /// @dev Wrapper around `INonfungiblePositionManager.positions`
+    /// @dev Wrapper around `ISlipStreamNonfungiblePositionManager.positions`
     /// @param tokenId The ID of the token that represents the position
-    /// @return Position token0 The address of the token0 for a specific pool
+    /// @return SlipStreamPosition token0 The address of the token0 for a specific pool
     /// token1 The address of the token1 for a specific pool
-    /// feeTier The fee tier of the pool
+    /// tickSpacing The tick spacing of the pool
     /// tickLower The lower end of the tick range for the position
     /// tickUpper The higher end of the tick range for the position
     /// liquidity The liquidity of the position
-    function _positions(uint256 tokenId) internal view returns (Position memory) {
-        return NPMCaller.positions(npm, tokenId);
+    function _positions(uint256 tokenId) internal view returns (SlipStreamPosition memory) {
+        return NPMCaller.positionsSlipStream(npm, tokenId);
     }
 
-    /// @notice Cast `Position` to `PoolKey`
+    /// @notice Cast `SlipStreamPosition` to `SlipStreamPoolAddress.PoolKey`
     /// @dev Solidity assigns free memory to structs when they are declared, which is unnecessary in this case.
     /// But there is nothing we can do unless the memory of a struct is only assigned when using the `new` keyword.
-    function castPoolKey(Position memory pos) internal pure returns (PoolKey memory poolKey) {
+    function castPoolKey(
+        SlipStreamPosition memory pos
+    ) internal pure returns (SlipStreamPoolAddress.PoolKey memory poolKey) {
         assembly ("memory-safe") {
-            // `PoolKey` is a subset of `Position`
+            // `SlipStreamPoolAddress.PoolKey` is a subset of `SlipStreamPosition`
             poolKey := pos
         }
     }
 
-    /// @notice Cast `MintParams` to `PoolKey`
-    function castPoolKey(IUniV3NPM.MintParams memory params) internal pure returns (PoolKey memory poolKey) {
+    /// @notice Cast `MintParams` to `SlipStreamPoolAddress.PoolKey`
+    function castPoolKey(
+        ISlipStreamNPM.MintParams memory params
+    ) internal pure returns (SlipStreamPoolAddress.PoolKey memory poolKey) {
         assembly ("memory-safe") {
-            // `PoolKey` is a subset of `MintParams`
+            // `SlipStreamPoolAddress.PoolKey` is a subset of `MintParams`
             poolKey := params
         }
     }
@@ -179,7 +184,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @param swapData The address of the external router and call data
     /// @return amountOut The amount of token received after swap
     function _swap(
-        PoolKey memory poolKey,
+        SlipStreamPoolAddress.PoolKey memory poolKey,
         uint256 amountIn,
         bool zeroForOne,
         bytes calldata swapData
@@ -201,7 +206,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @return amount0 The amount of token0 after swap
     /// @return amount1 The amount of token1 after swap
     function _optimalSwap(
-        PoolKey memory poolKey,
+        SlipStreamPoolAddress.PoolKey memory poolKey,
         int24 tickLower,
         int24 tickUpper,
         uint256 amount0Desired,
@@ -246,7 +251,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
 
     /// @dev Internal function to mint and refund
     function _mint(
-        IUniV3NPM.MintParams memory params
+        ISlipStreamNPM.MintParams memory params
     ) private returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         (tokenId, liquidity, amount0, amount1) = NPMCaller.mint(npm, params);
         address recipient = params.recipient;
@@ -329,7 +334,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @return amount0 The amount of token0 after fees
     /// @return amount1 The amount of token1 after fees
     function _collectMinusFees(
-        Position memory pos,
+        SlipStreamPosition memory pos,
         uint256 tokenId,
         uint256 amount0Delta,
         uint256 amount1Delta,
@@ -367,7 +372,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         uint256 feePips
     ) private returns (uint256 amount0, uint256 amount1) {
         uint256 tokenId = params.tokenId;
-        Position memory pos = _positions(tokenId);
+        SlipStreamPosition memory pos = _positions(tokenId);
         // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
         (uint256 amount0Delta, uint256 amount1Delta) = NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct transaction fees
@@ -381,7 +386,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @dev Decrease liquidity and swap the tokens to a single token
     function _decreaseCollectSingle(
         INPM.DecreaseLiquidityParams memory params,
-        Position memory pos,
+        SlipStreamPosition memory pos,
         bool zeroForOne,
         uint256 feePips,
         bytes calldata swapData
@@ -428,7 +433,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         uint256 feePips,
         bytes calldata swapData
     ) private returns (uint256 amount) {
-        Position memory pos = _positions(params.tokenId);
+        SlipStreamPosition memory pos = _positions(params.tokenId);
         amount = _decreaseCollectSingle(params, pos, zeroForOne, feePips, swapData);
     }
 
@@ -438,7 +443,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         uint256 feePips
     ) private returns (address token0, address token1, uint256 amount0, uint256 amount1) {
         uint256 tokenId = params.tokenId;
-        Position memory pos = _positions(tokenId);
+        SlipStreamPosition memory pos = _positions(tokenId);
         token0 = pos.token0;
         token1 = pos.token1;
         // Update `params.liquidity` to the current liquidity
@@ -470,7 +475,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         bytes calldata swapData
     ) private returns (uint256 amount) {
         uint256 tokenId = params.tokenId;
-        Position memory pos = _positions(tokenId);
+        SlipStreamPosition memory pos = _positions(tokenId);
         // Update `params.liquidity` to the current liquidity
         params.liquidity = pos.liquidity;
         amount = _decreaseCollectSingle(params, pos, zeroForOne, feePips, swapData);
@@ -483,8 +488,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         uint256 feePips,
         bytes calldata swapData
     ) private returns (uint128, uint256, uint256) {
-        Position memory pos = _positions(params.tokenId);
-        PoolKey memory poolKey = castPoolKey(pos);
+        SlipStreamPosition memory pos = _positions(params.tokenId);
+        SlipStreamPoolAddress.PoolKey memory poolKey = castPoolKey(pos);
         uint256 amount0;
         uint256 amount1;
         {
@@ -513,7 +518,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
 
     /// @dev Internal rebalance abstraction
     function _rebalance(
-        IUniV3NPM.MintParams memory params,
+        ISlipStreamNPM.MintParams memory params,
         uint256 tokenId,
         uint256 feePips,
         bytes calldata swapData
@@ -560,21 +565,21 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
      *  LIQUIDITY MANAGEMENT
      ***********************************************/
 
-    /// @inheritdoc IAutomanUniV3MintRebalance
+    /// @inheritdoc IAutomanSlipStreamMintRebalance
     function mint(
-        IUniV3NPM.MintParams memory params
+        ISlipStreamNPM.MintParams memory params
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         pullAndApprove(params.token0, params.token1, params.amount0Desired, params.amount1Desired);
         (tokenId, liquidity, amount0, amount1) = _mint(params);
         emit Mint(tokenId);
     }
 
-    /// @inheritdoc IAutomanUniV3MintRebalance
+    /// @inheritdoc IAutomanSlipStreamMintRebalance
     function mintOptimal(
-        IUniV3NPM.MintParams memory params,
+        ISlipStreamNPM.MintParams memory params,
         bytes calldata swapData
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
-        PoolKey memory poolKey = castPoolKey(params);
+        SlipStreamPoolAddress.PoolKey memory poolKey = castPoolKey(params);
         uint256 amount0Desired = params.amount0Desired;
         uint256 amount1Desired = params.amount1Desired;
         // Pull tokens
@@ -598,7 +603,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         INPM.IncreaseLiquidityParams memory params
     ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         uint256 tokenId = params.tokenId;
-        Position memory pos = _positions(tokenId);
+        SlipStreamPosition memory pos = _positions(tokenId);
         address token0 = pos.token0;
         address token1 = pos.token1;
         pullAndApprove(token0, token1, params.amount0Desired, params.amount1Desired);
@@ -611,7 +616,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         INPM.IncreaseLiquidityParams memory params,
         bytes calldata swapData
     ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-        Position memory pos = _positions(params.tokenId);
+        SlipStreamPosition memory pos = _positions(params.tokenId);
         address token0 = pos.token0;
         address token1 = pos.token1;
         uint256 amount0Desired = params.amount0Desired;
@@ -787,9 +792,9 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         emit Reinvest(tokenId);
     }
 
-    /// @inheritdoc IAutomanUniV3MintRebalance
+    /// @inheritdoc IAutomanSlipStreamMintRebalance
     function rebalance(
-        IUniV3NPM.MintParams memory params,
+        ISlipStreamNPM.MintParams memory params,
         uint256 tokenId,
         uint256 feePips,
         bytes calldata swapData
@@ -800,9 +805,9 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         emit Rebalance(newTokenId);
     }
 
-    /// @inheritdoc IAutomanUniV3MintRebalance
+    /// @inheritdoc IAutomanSlipStreamMintRebalance
     function rebalance(
-        IUniV3NPM.MintParams memory params,
+        ISlipStreamNPM.MintParams memory params,
         uint256 tokenId,
         uint256 feePips,
         bytes calldata swapData,
@@ -817,4 +822,9 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         (newTokenId, liquidity, amount0, amount1) = _rebalance(params, tokenId, feePips, swapData);
         emit Rebalance(newTokenId);
     }
+
+    constructor(
+        INPM nonfungiblePositionManager,
+        address owner_
+    ) payable Ownable(owner_) UniV3Immutables(nonfungiblePositionManager) {}
 }

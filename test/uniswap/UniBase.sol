@@ -13,7 +13,7 @@ import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3SwapCallback.so
 import "@uniswap/v3-core/contracts/interfaces/callback/IUniswapV3MintCallback.sol";
 import "@pancakeswap/v3-core/contracts/interfaces/callback/IPancakeV3SwapCallback.sol";
 import "@pancakeswap/v3-core/contracts/interfaces/callback/IPancakeV3MintCallback.sol";
-import {INonfungiblePositionManager as INPM} from "@aperture_finance/uni-v3-lib/src/interfaces/INonfungiblePositionManager.sol";
+import {ICommonNonfungiblePositionManager as INPM, IUniswapV3NonfungiblePositionManager as IUniV3NPM} from "@aperture_finance/uni-v3-lib/src/interfaces/IUniswapV3NonfungiblePositionManager.sol";
 import "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import "src/libraries/OptimalSwap.sol";
 import "./Helper.sol";
@@ -66,9 +66,6 @@ abstract contract UniBase is
         if (chainId == 1) {
             blockNumber = 17000000;
             USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-        } else if (chainId == 5) {
-            blockNumber = 9000000;
-            USDC = 0xD87Ba7A50B2E7E660f678A895E4B72E7CB4CCd9C;
         } else if (chainId == 10) {
             blockNumber = 20000000;
             USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
@@ -120,7 +117,7 @@ abstract contract UniBase is
 
     /// @dev Returns the digest used in the permit signature verification
     function permitDigest(address spender, uint256 tokenId, uint256 deadline) internal view returns (bytes32) {
-        (uint96 nonce, , , , , , , , , , , ) = npm.positions(tokenId);
+        (uint96 nonce, , , , , , , , , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         return
             MessageHashUtils.toTypedDataHash(
                 DOMAIN_SEPARATOR,
