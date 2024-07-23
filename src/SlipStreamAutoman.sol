@@ -28,16 +28,6 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     /************************************************
      *  STATE VARIABLES
      ***********************************************/
-
-    struct FeeConfig {
-        /// @notice The address that receives fees
-        /// @dev It is stored in the lower 160 bits of the slot
-        address feeCollector;
-        /// @notice The maximum fee percentage that can be charged for a transaction
-        /// @dev It is stored in the upper 96 bits of the slot
-        uint96 feeLimitPips;
-    }
-
     FeeConfig public feeConfig;
     /// @notice The address list that can perform automation
     mapping(address => bool) public isController;

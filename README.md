@@ -33,20 +33,20 @@ Include an `.env` file at the root directory and consider adding the following e
 
 ```shell
 PRIVATE_KEY="" # used as the contract deployer.
-MAINNET_RPC_URL="" # if using ethereum mainnet.
-ARBITRUM_RPC_URL="" # if using arbitrum mainnet.
-OPTIMISM_RPC_URL="" # if using optimism mainnet.
+MAINNET_RPC_URL="" # used to test UniV3 and PCSV3
+BASE_RPC_URL="" # used to test Aerodrome SlipStream
 ```
 
 ## Testing
 
-First, the unit tests interact with Optimism mainnet where relevant contracts are deployed; you need to provide an rpc
-node (preferably Alchemy's) in a `.env` file placed in the root directory of this repository.
+First, the unit tests interact with Ethereum and Base mainnet where relevant contracts are deployed; you need to provide rpc
+nodes (preferably Alchemy's) in a `.env` file placed in the root directory of this repository.
 
 Template:
 
 ```
-OPTIMISM_RPC_URL="https://opt-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+MAINNET_RPC_URL="https://eth-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
+BASE_RPC_URL="https://base-mainnet.g.alchemy.com/v2/${ALCHEMY_API_KEY}"
 ```
 
 Second, install Yarn and run `yarn` to install dependencies.
@@ -57,7 +57,9 @@ Third, install [Foundry](https://github.com/foundry-rs/foundry). Install git sub
 forge install
 ```
 
-By default `via_ir` is enabled in [`foundry.toml`](foundry.toml). It takes one to two minutes to compile the project via
+As of July 2024, `via_ir` cannot be enabled as it causes build failures, and this is a known issue for large projects.
+
+When `via_ir` is enabled in [`foundry.toml`](foundry.toml), it takes one to two minutes to compile the project via
 the IR pipeline. For faster compilation and testing, the lite profile can be enabled by setting the environment
 variable `FOUNDRY_PROFILE` to `lite` which shortens the compilation time to about 10 seconds.
 

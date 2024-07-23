@@ -1,24 +1,24 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.22;
 
-import {ISlipStreamNonfungiblePositionManager} from '@aperture_finance/uni-v3-lib/src/interfaces/ISlipStreamNonfungiblePositionManager.sol';
+import {ICommonNonfungiblePositionManager} from '@aperture_finance/uni-v3-lib/src/interfaces/ICommonNonfungiblePositionManager.sol';
 import "./base/SlipStreamSwapRouter.sol";
 
-contract OptimalSwapRouter is SlipStreamSwapRouter {
+contract SlipStreamOptimalSwapRouter is SlipStreamSwapRouter {
     using SafeTransferLib for address;
     using TernaryLib for bool;
 
-    constructor(ISlipStreamNonfungiblePositionManager npm) payable UniV3Immutables(npm) {}
+    constructor(ICommonNonfungiblePositionManager npm) payable UniV3Immutables(npm) {}
 
     fallback() external {
         /**
-            `msg.data` is encoded as `abi.encodePacked(token0, token1, fee, tickLower, tickUpper, zeroForOne,
+            `msg.data` is encoded as `abi.encodePacked(token0, token1, tickSpacing, tickLower, tickUpper, zeroForOne,
             approvalTarget, router, data)`
             | Arg            | Offset   |
             |----------------|----------|
             | token0         | [0, 20)  |
             | token1         | [20, 40) |
-            | fee            | [40, 43) |
+            | tickSpacing    | [40, 43) |
             | tickLower      | [43, 46) |
             | tickUpper      | [46, 49) |
             | zeroForOne     | [49, 50) |

@@ -15,7 +15,7 @@ import "./Callback.sol";
 /// @author Aperture Finance
 /// @dev This router swaps through an aggregator to get to approximately the optimal ratio to add liquidity in a UniV3-style
 /// pool, then swaps the tokens to the optimal ratio to add liquidity in the same pool.
-abstract contract SlipStreamSwapRouter is Payments, UniswapV3Callback {
+abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
     using SafeTransferLib for address;
     using TernaryLib for bool;
     using TickMath for int24;

@@ -35,6 +35,37 @@ interface IAutomanCommon {
     error InsufficientAmount();
     error FeeLimitExceeded();
 
+    struct FeeConfig {
+        /// @notice The address that receives fees
+        /// @dev It is stored in the lower 160 bits of the slot
+        address feeCollector;
+        /// @notice The maximum fee percentage that can be charged for a transaction
+        /// @dev It is stored in the upper 96 bits of the slot
+        uint96 feeLimitPips;
+    }
+
+    /// @notice Set the fee limit and collector
+    /// @param _feeConfig The new fee configuration
+    function setFeeConfig(FeeConfig calldata _feeConfig) external payable;
+
+    /// @notice Set addresses that can perform automation
+    function setControllers(address[] calldata controllers, bool[] calldata statuses) external payable;
+
+    /// @notice Check if an address is a controller
+    /// @param addressToCheck The address to check
+    function isController(address addressToCheck) external view returns (bool);
+
+    /// @notice Set whitelisted swap routers
+    /// @dev If `NonfungiblePositionManager` is a whitelisted router, this contract may approve arbitrary address to
+    /// spend NFTs it has been approved of.
+    /// @dev If an ERC20 token is whitelisted as a router, `transferFrom` may be called to drain tokens approved
+    /// to this contract during `mintOptimal` or `increaseLiquidityOptimal`.
+    /// @dev If a malicious router is whitelisted and called without slippage control, the caller may lose tokens in an
+    /// external swap. The router can't, however, drain ERC20 or ERC721 tokens which have been approved by other users
+    /// to this contract. Because this contract doesn't contain `transferFrom` with random `from` address like that in
+    /// SushiSwap's [`RouteProcessor2`](https://rekt.news/sushi-yoink-rekt/).
+    function setSwapRouters(address[] calldata routers, bool[] calldata statuses) external payable;
+
     /// @notice Get swap amount, output amount, swap direction for double-sided optimal deposit
     /// @param pool Uniswap v3 pool
     /// @param tickLower The lower tick of the position in which to add liquidity
