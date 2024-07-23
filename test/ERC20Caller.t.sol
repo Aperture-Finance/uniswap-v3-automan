@@ -19,7 +19,7 @@ contract ERC20CallerTest is Test {
         testToken = new MockERC20("TestToken", "TEST");
     }
 
-    function test_TotalSupply() public {
+    function test_TotalSupply() public view {
         address token = USDC;
         assertEq(IERC20(token).totalSupply(), ERC20Callee.wrap(token).totalSupply(), "totalSupply mismatch");
     }
@@ -68,7 +68,7 @@ contract ERC20CallerTest is Test {
         );
     }
 
-    function test_Decimals() public {
+    function test_Decimals() public view {
         address token = USDC;
         assertEq(IERC20Metadata(token).decimals(), ERC20Callee.wrap(token).decimals(), "decimals mismatch");
     }

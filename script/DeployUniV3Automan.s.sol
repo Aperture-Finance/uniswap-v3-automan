@@ -4,7 +4,6 @@ pragma solidity ^0.8.18;
 import "forge-std/Script.sol";
 import "./ICreate2Deployer.sol";
 import "../src/UniV3OptimalSwapRouter.sol";
-import "../src/RouterProxy.sol";
 import {UniV3Automan} from "../src/UniV3Automan.sol";
 
 contract DeployUniV3Automan is Script {
@@ -75,17 +74,6 @@ contract DeployUniV3Automan is Script {
                 automan.owner(),
                 address(params.controller)
             );
-        }
-
-        initCode = type(RouterProxy).creationCode;
-        initCodeHash = keccak256(initCode);
-        console2.log("RouterProxy initCodeHash:");
-        console2.logBytes32(initCodeHash);
-        RouterProxy routerProxy = RouterProxy(create2deployer.computeAddress(routerProxySalt, initCodeHash));
-        if (address(routerProxy).code.length == 0) {
-            // Deploy routerProxy
-            create2deployer.deploy(0, routerProxySalt, initCode);
-            console2.log("RouterProxy deployed at: %s", address(routerProxy));
         }
 
         initCode = bytes.concat(type(UniV3OptimalSwapRouter).creationCode, abi.encode(params.npm));

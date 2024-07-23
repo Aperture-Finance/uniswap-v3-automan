@@ -18,6 +18,17 @@ import "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import "src/libraries/OptimalSwap.sol";
 import "./Helper.sol";
 
+// Partial interface for the SlipStream factory.
+interface ISlipStreamCLFactory {
+    /// @notice Returns the pool address for a given pair of tokens and a tick spacing, or address 0 if it does not exist
+    /// @dev tokenA and tokenB may be passed in either token0/token1 or token1/token0 order
+    /// @param tokenA The contract address of either token0 or token1
+    /// @param tokenB The contract address of the other token
+    /// @param tickSpacing The tick spacing of the pool
+    /// @return pool The pool address
+    function getPool(address tokenA, address tokenB, int24 tickSpacing) external view returns (address pool);
+}
+
 /// @dev Base contract for Uniswap v3 tests
 abstract contract UniBase is
     Test,
@@ -32,8 +43,9 @@ abstract contract UniBase is
     using SafeTransferLib for address;
     using TickMath for int24;
 
-    // Uniswap v3 position manager
-    INPM internal npm = INPM(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
+    // The default DEX is 'UniV3' because that is the zero value of the enum.
+    UniBase.DEX internal dex;
+    INPM internal npm;
 
     uint256 internal chainId;
     address payable internal WETH;
@@ -41,8 +53,9 @@ abstract contract UniBase is
     address internal token0;
     address internal token1;
     uint24 internal constant fee = 500;
+    int24 internal constant tickSpacingSlipStream = 100;
 
-    IUniswapV3Factory internal factory;
+    address internal factory;
     address internal pool;
     uint8 internal token0Decimals;
     uint256 internal token0Unit;
@@ -56,30 +69,36 @@ abstract contract UniBase is
     address internal user;
     uint256 internal pk;
 
+    enum DEX {
+        UniV3,
+        PCSV3,
+        SlipStream
+    }
+
     // Configure state variables for each chain before creating a fork
     function initBeforeFork() internal returns (string memory chainAlias, uint256 blockNumber) {
-        if (chainId == 0) {
-            chainId = vm.envOr("CHAIN_ID", uint256(1));
-        }
-        chainAlias = getChain(chainId).chainAlias;
-        // Configuration for each chain
-        if (chainId == 1) {
+        if (dex == DEX.UniV3) {
+            chainAlias = "mainnet";
             blockNumber = 17000000;
+            npm = INPM(0xC36442b4a4522E871399CD717aBDD847Ab11FE88);
             USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-        } else if (chainId == 10) {
-            blockNumber = 20000000;
-            USDC = 0x7F5c764cBc14f9669B88837ca1490cCa17c31607;
-        } else if (chainId == 42161) {
-            blockNumber = 70000000;
-            USDC = 0xFF970A61A04b1cA14834A43f5dE4533eBDDB5CC8;
+        } else if (dex == DEX.PCSV3) {
+            chainAlias = "mainnet";
+            blockNumber = 17000000;
+            npm = INPM(0x46A15B0b27311cedF172AB29E4f4766fbE7F4364);
+            USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
         } else {
-            revert("Unsupported chain");
+            // SlipStream
+            chainAlias = "base";
+            blockNumber = 17447600;
+            npm = INPM(0x827922686190790b37229fd06084350E74485b72);
+            USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
         }
     }
 
     // Configure state variables for each chain after creating a fork
     function initAfterFork() internal {
-        factory = IUniswapV3Factory(npm.factory());
+        factory = npm.factory();
         WETH = payable(npm.WETH9());
         if (WETH < USDC) {
             token0 = WETH;
@@ -88,7 +107,11 @@ abstract contract UniBase is
             token0 = USDC;
             token1 = WETH;
         }
-        pool = factory.getPool(token0, token1, fee);
+        if (dex == DEX.SlipStream) {
+            pool = ISlipStreamCLFactory(factory).getPool(token0, token1, tickSpacingSlipStream);
+        } else {
+            pool = IUniswapV3Factory(factory).getPool(token0, token1, fee);
+        }
         tickSpacing = V3PoolCallee.wrap(pool).tickSpacing();
         token0Decimals = IERC20Metadata(token0).decimals();
         token0Unit = 10 ** token0Decimals;
@@ -288,14 +311,14 @@ abstract contract UniBase is
     }
 
     /// @dev Ensure that the swap is successful
-    function assertSwapSuccess(bool zeroForOne, uint256 amountOut) internal {
+    function assertSwapSuccess(bool zeroForOne, uint256 amountOut) internal view {
         (address tokenIn, address tokenOut) = switchIf(zeroForOne, token1, token0);
         assertEq(IERC20(tokenIn).balanceOf(address(this)), 0, "amountIn not exhausted");
         assertEq(IERC20(tokenOut).balanceOf(address(this)), amountOut, "amountOut mismatch");
     }
 
     /// @dev  Ensure that there is little leftover after optimal deposit
-    function assertLittleLeftover() internal {
+    function assertLittleLeftover() internal view {
         uint256 balance0Left = IERC20(token0).balanceOf(address(this));
         uint256 balance1Left = IERC20(token1).balanceOf(address(this));
         assertLe(address(this).balance, 1e12, "too much eth leftover");
@@ -311,7 +334,7 @@ abstract contract UniBase is
         uint256 amount0,
         uint256 amount1,
         bool involvesETH
-    ) internal {
+    ) internal view {
         assertTrue(amount0 != 0 || amount1 != 0, "amount0 or amount1 must be non-zero");
         assertEq(
             involvesETH ? balanceOf(token0, recipient) : IERC20(token0).balanceOf(recipient),
@@ -325,7 +348,7 @@ abstract contract UniBase is
         );
     }
 
-    function assertZeroBalance(address target) internal {
+    function assertZeroBalance(address target) internal view {
         assertEq(target.balance, 0, "ETH balance");
         assertEq(IERC20(token0).balanceOf(target), 0, "token0 balance");
         assertEq(IERC20(token1).balanceOf(target), 0, "token1 balance");

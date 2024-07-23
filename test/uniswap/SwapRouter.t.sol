@@ -286,7 +286,7 @@ contract SwapRouterTest is UniBase {
 
 contract PCSV3SwapRouterTest is SwapRouterTest {
     function setUp() public virtual override {
-        npm = INPM(0x46A15B0b27311cedF172AB29E4f4766fbE7F4364);
+        dex = UniBase.DEX.PCSV3;
         UniBase.setUp();
         v3SwapRouter = 0x1b81D678ffb9C0263b24A97847620C99d213eB14;
         router = new PCSV3SwapRouterHandler(IPCSV3NonfungiblePositionManager(address(npm)));

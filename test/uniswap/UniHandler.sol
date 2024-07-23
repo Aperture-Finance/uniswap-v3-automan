@@ -2,9 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
+import {NPMCaller, Position, SlipStreamPosition} from "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "src/base/Automan.sol";
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "src/interfaces/IAutoman.sol";
+import "solady/src/utils/SafeTransferLib.sol";
 import {UniBase} from "./UniBase.sol";
+import {TickMath} from "src/libraries/OptimalSwap.sol";
 
 // https://book.getfoundry.sh/forge/invariant-testing#handler-based-testing
 contract UniHandler is UniBase {
@@ -12,7 +17,7 @@ contract UniHandler is UniBase {
     using TickMath for int24;
     using EnumerableSet for EnumerableSet.UintSet;
 
-    Automan internal automan;
+    IAutomanCommon internal automan;
     EnumerableSet.UintSet internal _tokenIds;
     mapping(bytes32 => uint256) internal calls;
 
@@ -36,7 +41,8 @@ contract UniHandler is UniBase {
         console2.log("swapBackAndForth", calls["swapBackAndForth"]);
     }
 
-    function init(Automan _automan) public {
+    function init(IAutomanCommon _automan, DEX _dex) public {
+        dex = _dex;
         initBeforeFork();
         initAfterFork();
         automan = _automan;
@@ -90,27 +96,53 @@ contract UniHandler is UniBase {
         uint256 value = sendValue ? handleWETH(amount0Desired, amount1Desired) : 0;
         (bool ok, uint128 liquidity) = prepLiquidity(tickLower, tickUpper, amount0Desired, amount1Desired);
         if (ok)
-            try
-                automan.mint{value: value}(
-                    IUniV3NPM.MintParams({
-                        token0: token0,
-                        token1: token1,
-                        fee: fee,
-                        tickLower: tickLower,
-                        tickUpper: tickUpper,
-                        amount0Desired: amount0Desired,
-                        amount1Desired: amount1Desired,
-                        amount0Min: 0,
-                        amount1Min: 0,
-                        recipient: recipient,
-                        deadline: block.timestamp
-                    })
-                )
-            returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
-                tokenId = _tokenId;
-                assertEq(_liquidity, liquidity, "liquidity mismatch");
-            } catch Error(string memory reason) {
-                assertEq(reason, "LO", "only catch liquidity overflow");
+            if (dex == DEX.SlipStream) {
+                try
+                    IAutomanSlipStreamMintRebalance(address(automan)).mint{value: value}(
+                        ISlipStreamNPM.MintParams({
+                            token0: token0,
+                            token1: token1,
+                            tickSpacing: tickSpacingSlipStream,
+                            tickLower: tickLower,
+                            tickUpper: tickUpper,
+                            amount0Desired: amount0Desired,
+                            amount1Desired: amount1Desired,
+                            amount0Min: 0,
+                            amount1Min: 0,
+                            recipient: recipient,
+                            deadline: block.timestamp,
+                            sqrtPriceX96: 0
+                        })
+                    )
+                returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
+                    tokenId = _tokenId;
+                    assertEq(_liquidity, liquidity, "liquidity mismatch");
+                } catch Error(string memory reason) {
+                    assertEq(reason, "LO", "only catch liquidity overflow");
+                }
+            } else {
+                try
+                    IAutomanUniV3MintRebalance(address(automan)).mint{value: value}(
+                        IUniV3NPM.MintParams({
+                            token0: token0,
+                            token1: token1,
+                            fee: fee,
+                            tickLower: tickLower,
+                            tickUpper: tickUpper,
+                            amount0Desired: amount0Desired,
+                            amount1Desired: amount1Desired,
+                            amount0Min: 0,
+                            amount1Min: 0,
+                            recipient: recipient,
+                            deadline: block.timestamp
+                        })
+                    )
+                returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
+                    tokenId = _tokenId;
+                    assertEq(_liquidity, liquidity, "liquidity mismatch");
+                } catch Error(string memory reason) {
+                    assertEq(reason, "LO", "only catch liquidity overflow");
+                }
             }
     }
 
@@ -127,28 +159,55 @@ contract UniHandler is UniBase {
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
         uint256 value = handleWETH(amount0Desired, amount1Desired);
-        try
-            automan.mintOptimal{value: value}(
-                IUniV3NPM.MintParams({
-                    token0: token0,
-                    token1: token1,
-                    fee: fee,
-                    tickLower: tickLower,
-                    tickUpper: tickUpper,
-                    amount0Desired: amount0Desired,
-                    amount1Desired: amount1Desired,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: recipient,
-                    deadline: block.timestamp
-                }),
-                swapData
-            )
-        returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
-            tokenId = _tokenId;
-            liquidity = _liquidity;
-        } catch Error(string memory reason) {
-            assertEq(reason, "LO", "only catch liquidity overflow");
+        if (dex == DEX.SlipStream) {
+            try
+                IAutomanSlipStreamMintRebalance(address(automan)).mintOptimal{value: value}(
+                    ISlipStreamNPM.MintParams({
+                        token0: token0,
+                        token1: token1,
+                        tickSpacing: tickSpacingSlipStream,
+                        tickLower: tickLower,
+                        tickUpper: tickUpper,
+                        amount0Desired: amount0Desired,
+                        amount1Desired: amount1Desired,
+                        amount0Min: 0,
+                        amount1Min: 0,
+                        recipient: recipient,
+                        deadline: block.timestamp,
+                        sqrtPriceX96: 0
+                    }),
+                    swapData
+                )
+            returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
+                tokenId = _tokenId;
+                liquidity = _liquidity;
+            } catch Error(string memory reason) {
+                assertEq(reason, "LO", "only catch liquidity overflow");
+            }
+        } else {
+            try
+                IAutomanUniV3MintRebalance(address(automan)).mintOptimal{value: value}(
+                    IUniV3NPM.MintParams({
+                        token0: token0,
+                        token1: token1,
+                        fee: fee,
+                        tickLower: tickLower,
+                        tickUpper: tickUpper,
+                        amount0Desired: amount0Desired,
+                        amount1Desired: amount1Desired,
+                        amount0Min: 0,
+                        amount1Min: 0,
+                        recipient: recipient,
+                        deadline: block.timestamp
+                    }),
+                    swapData
+                )
+            returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
+                tokenId = _tokenId;
+                liquidity = _liquidity;
+            } catch Error(string memory reason) {
+                assertEq(reason, "LO", "only catch liquidity overflow");
+            }
         }
     }
 
@@ -163,9 +222,22 @@ contract UniHandler is UniBase {
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
         uint256 value = sendValue ? handleWETH(amount0Desired, amount1Desired) : 0;
-        Position memory pos = NPMCaller.positions(npm, tokenId);
-        (bool ok, uint128 liquidity) = prepLiquidity(pos.tickLower, pos.tickUpper, amount0Desired, amount1Desired);
-        if (ok && (uint256(liquidity) + pos.liquidity) <= type(uint128).max)
+        int24 tickLower;
+        int24 tickUpper;
+        uint128 posLiquidity;
+        if (dex == DEX.SlipStream) {
+            SlipStreamPosition memory pos = NPMCaller.positionsSlipStream(npm, tokenId);
+            tickLower = pos.tickLower;
+            tickUpper = pos.tickUpper;
+            posLiquidity = pos.liquidity;
+        } else {
+            Position memory pos = NPMCaller.positions(npm, tokenId);
+            tickLower = pos.tickLower;
+            tickUpper = pos.tickUpper;
+            posLiquidity = pos.liquidity;
+        }
+        (bool ok, uint128 liquidity) = prepLiquidity(tickLower, tickUpper, amount0Desired, amount1Desired);
+        if (ok && (uint256(liquidity) + posLiquidity) <= type(uint128).max)
             try
                 automan.increaseLiquidity{value: value}(
                     INPM.IncreaseLiquidityParams({
@@ -325,24 +397,46 @@ contract UniHandler is UniBase {
         int24 tickUpper,
         uint256 feePips
     ) internal returns (uint256 newTokenId) {
-        (newTokenId, , , ) = automan.rebalance(
-            IUniV3NPM.MintParams({
-                token0: token0,
-                token1: token1,
-                fee: fee,
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                amount0Desired: 0,
-                amount1Desired: 0,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(0),
-                deadline: block.timestamp
-            }),
-            tokenId,
-            feePips,
-            new bytes(0)
-        );
+        if (dex == DEX.SlipStream) {
+            (newTokenId, , , ) = IAutomanSlipStreamMintRebalance(address(automan)).rebalance(
+                ISlipStreamNPM.MintParams({
+                    token0: token0,
+                    token1: token1,
+                    tickSpacing: tickSpacingSlipStream,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    amount0Desired: 0,
+                    amount1Desired: 0,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(0),
+                    deadline: block.timestamp,
+                    sqrtPriceX96: 0
+                }),
+                tokenId,
+                feePips,
+                new bytes(0)
+            );
+        } else {
+            (newTokenId, , , ) = IAutomanUniV3MintRebalance(address(automan)).rebalance(
+                IUniV3NPM.MintParams({
+                    token0: token0,
+                    token1: token1,
+                    fee: fee,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    amount0Desired: 0,
+                    amount1Desired: 0,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(0),
+                    deadline: block.timestamp
+                }),
+                tokenId,
+                feePips,
+                new bytes(0)
+            );
+        }
     }
 
     /************************************************

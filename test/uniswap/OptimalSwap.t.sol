@@ -3,24 +3,19 @@ pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";
 import "forge-std/interfaces/IERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
 import "@aperture_finance/uni-v3-lib/src/PoolAddress.sol";
 import {TickBitmap, TickMath, UniBase, V3PoolCallee} from "./UniBase.sol";
 import {OptimalSwap} from "src/libraries/OptimalSwap.sol";
 
 contract OptimalSwapTest is UniBase {
-    // Homora Uniswap v3 OptimalSwap
-    IHomoraV3OptimalSwap internal constant HomoraOptimalSwap =
-        IHomoraV3OptimalSwap(0xC781Cf972AB97601efeCFfA53202A410f52FEF92);
-
     function setUp() public override {
-        // Test on Optimism since Homora's OptimalSwap is deployed
-        chainId = 10;
         super.setUp();
         deal(address(this), 0);
     }
 
-    function test_LiquidityDelta(bool zeroForOne) public {
+    function test_LiquidityDelta(bool zeroForOne) public view {
         (int24 tick, , , ) = TickBitmap.nextInitializedTickWithinOneWord(
             V3PoolCallee.wrap(pool),
             currentTick(),
@@ -62,30 +57,10 @@ contract OptimalSwapTest is UniBase {
         (int24 tickLower, int24 tickUpper) = prepTicks();
         uint256 amt0User = 0 * token0Unit;
         uint256 amt1User = 100000 * token1Unit;
-
-        uint256 gasBefore = gasleft();
-        (uint256 amtSwap, uint256 amtOut, bool zeroForOne) = HomoraOptimalSwap.getOptimalSwapAmt(
-            pool,
-            amt0User,
-            amt1User,
-            tickLower,
-            tickUpper
-        );
-        console2.log("Homora gas used %d", gasBefore - gasleft());
-        emit log_named_decimal_uint("Homora amtSwap", amtSwap, ternary(zeroForOne, token0Decimals, token1Decimals));
-        emit log_named_decimal_uint("Homora amtOut", amtOut, ternary(zeroForOne, token1Decimals, token0Decimals));
-
         deal(token0, address(this), amt0User);
         deal(token1, address(this), amt1User);
-        uint256 snapshotId = vm.snapshot();
-
-        swapAndMint(address(this), amtSwap, zeroForOne, tickLower, tickUpper);
-        emit log_named_decimal_uint("Token0 left", IERC20(token0).balanceOf(address(this)), token0Decimals);
-        emit log_named_decimal_uint("Token1 left", IERC20(token1).balanceOf(address(this)), token1Decimals);
-
-        vm.revertTo(snapshotId);
-        gasBefore = gasleft();
-        (amtSwap, amtOut, zeroForOne, ) = OptimalSwap.getOptimalSwap(
+        uint256 gasBefore = gasleft();
+        (uint256 amtSwap, uint256 amtOut, bool zeroForOne, ) = OptimalSwap.getOptimalSwap(
             V3PoolCallee.wrap(pool),
             tickLower,
             tickUpper,
@@ -188,6 +163,10 @@ contract OptimalSwapTest is UniBase {
         Position memory position = NPMCaller.positions(npm, tokenId);
         token0 = position.token0;
         token1 = position.token1;
+        token0Decimals = IERC20Metadata(token0).decimals();
+        token0Unit = 10 ** token0Decimals;
+        token1Decimals = IERC20Metadata(token1).decimals();
+        token1Unit = 10 ** token1Decimals;
         vm.startPrank(owner);
         NPMCaller.decreaseLiquidity(
             npm,
@@ -209,20 +188,4 @@ contract OptimalSwapTest is UniBase {
         assertEq(currentTick(), tick);
         assertLittleLeftover();
     }
-}
-
-interface IHomoraV3OptimalSwap {
-    /// @dev get amtSwap for optimal deposit (only in tick range)
-    /// @param _pool uniswap v3 pool
-    /// @param _amt0In desired token0's amount
-    /// @param _amt1In desired token1's amount
-    /// @param _tickLower desired tick lower (to provide lp)
-    /// @param _tickUpper desired tick uppper (to provide lp)
-    function getOptimalSwapAmt(
-        address _pool,
-        uint256 _amt0In,
-        uint256 _amt1In,
-        int24 _tickLower,
-        int24 _tickUpper
-    ) external view returns (uint256 amtSwap, uint256 amtOut, bool zeroForOne);
 }
