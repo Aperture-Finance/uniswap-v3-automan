@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.22;
 
-import {ICommonNonfungiblePositionManager} from '@aperture_finance/uni-v3-lib/src/interfaces/ICommonNonfungiblePositionManager.sol';
+import {ICommonNonfungiblePositionManager} from "@aperture_finance/uni-v3-lib/src/interfaces/ICommonNonfungiblePositionManager.sol";
 import "./base/SlipStreamSwapRouter.sol";
 
 contract SlipStreamOptimalSwapRouter is SlipStreamSwapRouter {
@@ -78,7 +78,11 @@ contract SlipStreamOptimalSwapRouter is SlipStreamSwapRouter {
                     tickLower := signextend(2, shr(232, calldataload(43)))
                     tickUpper := signextend(2, shr(232, calldataload(46)))
                 }
-                SlipStreamPoolAddress.PoolKey memory poolKey = SlipStreamPoolAddress.PoolKey({token0: token0, token1: token1, tickSpacing: tickSpacing});
+                SlipStreamPoolAddress.PoolKey memory poolKey = SlipStreamPoolAddress.PoolKey({
+                    token0: token0,
+                    token1: token1,
+                    tickSpacing: tickSpacing
+                });
                 address pool = computeAddressSorted(poolKey);
                 uint256 amount0Desired;
                 uint256 amount1Desired;
