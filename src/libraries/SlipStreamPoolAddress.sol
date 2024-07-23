@@ -27,7 +27,11 @@ library SlipStreamPoolAddress {
     }
 
     /// @dev Copied from https://github.com/OpenZeppelin/openzeppelin-contracts/blob/04695aecbd4d17dddfd55de766d10e3805d6f42f/contracts/proxy/Clones.sol.
-    function predictDeterministicAddress(address master, bytes32 salt, address deployer) internal pure returns (address predicted) {
+    function predictDeterministicAddress(
+        address master,
+        bytes32 salt,
+        address deployer
+    ) internal pure returns (address predicted) {
         // solhint-disable-next-line no-inline-assembly
         assembly {
             let ptr := mload(0x40)
