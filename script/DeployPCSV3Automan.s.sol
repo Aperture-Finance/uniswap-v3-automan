@@ -4,7 +4,7 @@ pragma solidity ^0.8.18;
 import "forge-std/Script.sol";
 import "./ICreate2Deployer.sol";
 import "../src/PCSV3OptimalSwapRouter.sol";
-import "../src/PCSV3Automan.sol";
+import {PCSV3Automan} from "../src/PCSV3Automan.sol";
 
 contract DeployPCSV3Automan is Script {
     struct DeployParams {

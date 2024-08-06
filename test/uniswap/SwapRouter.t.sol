@@ -3,7 +3,8 @@ pragma solidity ^0.8.0;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
 import "src/base/SwapRouter.sol";
-import "./UniBase.sol";
+import {Helper, TickBitmap, TickMath, V3PoolCallee, UniBase} from "./UniBase.sol";
+import {IPCSV3NonfungiblePositionManager} from "@aperture_finance/uni-v3-lib/src/interfaces/IPCSV3NonfungiblePositionManager.sol";
 
 interface ISwapRouterHandler {
     function poolSwap(
@@ -285,7 +286,7 @@ contract SwapRouterTest is UniBase {
 
 contract PCSV3SwapRouterTest is SwapRouterTest {
     function setUp() public virtual override {
-        npm = INPM(0x46A15B0b27311cedF172AB29E4f4766fbE7F4364);
+        dex = UniBase.DEX.PCSV3;
         UniBase.setUp();
         v3SwapRouter = 0x1b81D678ffb9C0263b24A97847620C99d213eB14;
         router = new PCSV3SwapRouterHandler(IPCSV3NonfungiblePositionManager(address(npm)));

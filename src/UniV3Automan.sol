@@ -2,7 +2,8 @@
 pragma solidity ^0.8.18;
 
 import "./base/Automan.sol";
-import "./base/SwapRouter.sol";
+import {UniV3SwapRouter} from "./base/SwapRouter.sol";
+import {UniV3Immutables} from "./base/Immutables.sol";
 
 contract UniV3Automan is Automan, UniV3SwapRouter {
     constructor(

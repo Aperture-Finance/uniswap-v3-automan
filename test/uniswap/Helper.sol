@@ -25,7 +25,7 @@ abstract contract Helper {
 
     /// @notice Sorts two uint160s and returns them in ascending order
     function sort2(uint160 a, uint160 b) internal pure returns (uint160, uint160) {
-        return a.sort2(b);
+        return a.sort2U160(b);
     }
 
     /// @dev Identical to `LiquidityAmounts.getLiquidityForAmount0` except for the return type

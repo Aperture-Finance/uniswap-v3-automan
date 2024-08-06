@@ -2,6 +2,7 @@
 pragma solidity ^0.8.18;
 
 import "./base/OptimalSwapRouter.sol";
+import {IPCSV3NonfungiblePositionManager} from "@aperture_finance/uni-v3-lib/src/interfaces/IPCSV3NonfungiblePositionManager.sol";
 
 /// @title Optimal Swap Router
 /// @author Aperture Finance

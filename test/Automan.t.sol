@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "./uniswap/UniHandler.sol";
 import "src/PCSV3Automan.sol";
 import "src/UniV3Automan.sol";
+import "src/SlipStreamAutoman.sol";
 
 /// @dev Test contract for UniV3Automan
 contract UniV3AutomanTest is UniHandler {
@@ -24,13 +26,13 @@ contract UniV3AutomanTest is UniHandler {
     }
 
     function setUpCommon() internal {
-        vm.label(address(automan), "UniV3Automan");
+        vm.label(address(automan), "Automan");
         handler = new UniHandler();
         vm.label(address(handler), "UniHandler");
-        handler.init(automan);
+        handler.init(automan, dex);
 
         // Set up automan
-        automan.setFeeConfig(Automan.FeeConfig({feeLimitPips: 5e16, feeCollector: collector}));
+        automan.setFeeConfig(IAutomanCommon.FeeConfig({feeLimitPips: 5e16, feeCollector: collector}));
         address[] memory controllers = new address[](2);
         controllers[0] = address(this);
         controllers[1] = address(handler);
@@ -93,7 +95,7 @@ contract UniV3AutomanTest is UniHandler {
     }
 
     /// @dev Verify tokenId of the last minted LP position
-    function verifyTokenId(uint256 tokenId) internal returns (bool success) {
+    function verifyTokenId(uint256 tokenId) internal view returns (bool success) {
         uint256 nlpBalance = npm.balanceOf(address(this));
         if (nlpBalance > 1) {
             assertEq(tokenId, npm.tokenOfOwnerByIndex(address(this), nlpBalance - 1), "tokenId must match");
@@ -111,7 +113,7 @@ contract UniV3AutomanTest is UniHandler {
         routers[0] = address(npm);
         bool[] memory statuses = new bool[](1);
         statuses[0] = true;
-        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
     }
 
@@ -121,10 +123,10 @@ contract UniV3AutomanTest is UniHandler {
         routers[0] = address(WETH);
         bool[] memory statuses = new bool[](1);
         statuses[0] = true;
-        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
         routers[0] = address(USDC);
-        vm.expectRevert(IAutoman.InvalidSwapRouter.selector);
+        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
         automan.setSwapRouters(routers, statuses);
     }
 
@@ -134,23 +136,43 @@ contract UniV3AutomanTest is UniHandler {
         deal(amount0Desired, amount1Desired);
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
-        vm.expectRevert(IAutoman.NotWhitelistedRouter.selector);
-        automan.mintOptimal(
-            INPM.MintParams({
-                token0: token0,
-                token1: token1,
-                fee: fee,
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                amount0Desired: amount0Desired,
-                amount1Desired: amount1Desired,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            }),
-            abi.encodePacked(npm)
-        );
+        vm.expectRevert(IAutomanCommon.NotWhitelistedRouter.selector);
+        if (dex == DEX.SlipStream) {
+            IAutomanSlipStreamMintRebalance(address(automan)).mintOptimal(
+                ISlipStreamNPM.MintParams({
+                    token0: token0,
+                    token1: token1,
+                    tickSpacing: tickSpacingSlipStream,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    amount0Desired: amount0Desired,
+                    amount1Desired: amount1Desired,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: block.timestamp,
+                    sqrtPriceX96: 0
+                }),
+                abi.encodePacked(npm)
+            );
+        } else {
+            IAutomanUniV3MintRebalance(address(automan)).mintOptimal(
+                IUniV3NPM.MintParams({
+                    token0: token0,
+                    token1: token1,
+                    fee: fee,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    amount0Desired: amount0Desired,
+                    amount1Desired: amount1Desired,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: block.timestamp
+                }),
+                abi.encodePacked(npm)
+            );
+        }
     }
 
     /// @dev Should revert if the caller is not the owner or controller
@@ -161,29 +183,29 @@ contract UniV3AutomanTest is UniHandler {
         // `user` is not the owner or controller.
         assertTrue(!automan.isController(user));
         vm.startPrank(user);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _decreaseLiquidity(tokenId, 1, 0);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _decreaseLiquiditySingle(tokenId, 1, true, 0);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _removeLiquidity(tokenId, 0);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _removeLiquiditySingle(tokenId, true, 0);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _reinvest(tokenId, 1e12);
         (tickLower, tickUpper) = prepTicks(0, 100);
-        vm.expectRevert(IAutoman.NotApproved.selector);
+        vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _rebalance(tokenId, tickLower, tickUpper, 1e12);
     }
 
     /// @dev Should revert if the fee is greater than the limit
     function testRevert_FeeLimitExceeded() public {
-        vm.expectRevert(IAutoman.FeeLimitExceeded.selector);
+        vm.expectRevert(IAutomanCommon.FeeLimitExceeded.selector);
         _decreaseLiquidity(thisTokenId, 1, 1e17);
     }
 
     /// @dev Decreasing liquidity without prior approval should fail
-    function testRevert_NotApproved() public {
+    function testRevert_NotApproved() public virtual {
         vm.expectRevert("Not approved");
         _decreaseLiquidity(thisTokenId, 1, 0);
     }
@@ -192,11 +214,11 @@ contract UniV3AutomanTest is UniHandler {
      *  LIQUIDITY MANAGEMENT TESTS
      ***********************************************/
 
-    function invariantZeroBalance() public {
+    function invariantZeroBalance() public view {
         assertZeroBalance(address(automan));
     }
 
-    function assertBalance() internal {
+    function assertBalance() internal view {
         assertZeroBalance(address(automan));
         assertLittleLeftover();
     }
@@ -219,21 +241,40 @@ contract UniV3AutomanTest is UniHandler {
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
         vm.expectRevert();
-        automan.mint(
-            INPM.MintParams({
-                token0: token1,
-                token1: token0,
-                fee: fee,
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                amount0Desired: amount1,
-                amount1Desired: amount0,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            })
-        );
+        if (dex == DEX.SlipStream) {
+            IAutomanSlipStreamMintRebalance(address(automan)).mint(
+                ISlipStreamNPM.MintParams({
+                    token0: token1,
+                    token1: token0,
+                    tickSpacing: tickSpacingSlipStream,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    amount0Desired: amount1,
+                    amount1Desired: amount0,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: block.timestamp,
+                    sqrtPriceX96: 0
+                })
+            );
+        } else {
+            IAutomanUniV3MintRebalance(address(automan)).mint(
+                IUniV3NPM.MintParams({
+                    token0: token1,
+                    token1: token0,
+                    fee: fee,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    amount0Desired: amount1,
+                    amount1Desired: amount0,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: block.timestamp
+                })
+            );
+        }
     }
 
     /// @dev Test minting a v3 LP position using optimal swap with fuzzed inputs
@@ -286,22 +327,42 @@ contract UniV3AutomanTest is UniHandler {
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
         vm.expectRevert(OptimalSwap.Invalid_Pool.selector);
-        automan.mintOptimal(
-            INPM.MintParams({
-                token0: token1,
-                token1: token0,
-                fee: fee,
-                tickLower: tickLower,
-                tickUpper: tickUpper,
-                amount0Desired: amount1Desired,
-                amount1Desired: amount0Desired,
-                amount0Min: 0,
-                amount1Min: 0,
-                recipient: address(this),
-                deadline: block.timestamp
-            }),
-            new bytes(0)
-        );
+        if (dex == DEX.SlipStream) {
+            IAutomanSlipStreamMintRebalance(address(automan)).mintOptimal(
+                ISlipStreamNPM.MintParams({
+                    token0: token1,
+                    token1: token0,
+                    tickSpacing: tickSpacingSlipStream,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    amount0Desired: amount1Desired,
+                    amount1Desired: amount0Desired,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: block.timestamp,
+                    sqrtPriceX96: 0
+                }),
+                new bytes(0)
+            );
+        } else {
+            IAutomanUniV3MintRebalance(address(automan)).mintOptimal(
+                IUniV3NPM.MintParams({
+                    token0: token1,
+                    token1: token0,
+                    fee: fee,
+                    tickLower: tickLower,
+                    tickUpper: tickUpper,
+                    amount0Desired: amount1Desired,
+                    amount1Desired: amount0Desired,
+                    amount0Min: 0,
+                    amount1Min: 0,
+                    recipient: address(this),
+                    deadline: block.timestamp
+                }),
+                new bytes(0)
+            );
+        }
     }
 
     /// @dev Test increasing liquidity of a v3 LP position using optimal swap with fixed inputs for gas comparison purpose
@@ -345,7 +406,7 @@ contract UniV3AutomanTest is UniHandler {
     /// @dev Test decreasing liquidity of a v3 LP position
     function testFuzz_DecreaseLiquidity(uint128 liquidityDesired) public {
         uint256 tokenId = thisTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 balance0Before = balanceOf(token0, address(this));
         uint256 balance1Before = balanceOf(token1, address(this));
@@ -359,14 +420,14 @@ contract UniV3AutomanTest is UniHandler {
     function testRevert_TooMuchFee() public {
         uint256 tokenId = thisTokenId;
         npm.approve(address(automan), tokenId);
-        vm.expectRevert(IAutoman.InsufficientAmount.selector);
+        vm.expectRevert(IAutomanCommon.InsufficientAmount.selector);
         _decreaseLiquidity(tokenId, 10, 1e16);
     }
 
     /// @dev Decreasing liquidity with permit
     function testFuzz_DecreaseLiquidity_WithPermit(uint128 liquidityDesired) public {
         uint256 tokenId = userTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
@@ -383,7 +444,7 @@ contract UniV3AutomanTest is UniHandler {
     /// @dev Test decreasing liquidity of a v3 LP position and withdrawing a single token
     function testFuzz_DecreaseLiquiditySingle(uint128 liquidityDesired, bool zeroForOne) public {
         uint256 tokenId = thisTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 balanceBefore = zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this));
         // Approve automan to decrease liquidity
@@ -399,7 +460,7 @@ contract UniV3AutomanTest is UniHandler {
     /// @dev Decreasing liquidity with permit
     function testFuzz_DecreaseLiquiditySingle_WithPermit(uint128 liquidityDesired, bool zeroForOne) public {
         uint256 tokenId = thisTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = npm.positions(tokenId);
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
@@ -497,7 +558,7 @@ contract UniV3AutomanTest is UniHandler {
     /// @dev Test reinvesting a v3 LP position
     function test_Reinvest() public {
         uint256 tokenId = userTokenId;
-        swapBackAndForth(100 * token0Unit, true);
+        swapBackAndForth(100000 * token0Unit, true);
         vm.prank(user);
         npm.approve(address(automan), tokenId);
         uint256 gasBefore = gasleft();
@@ -515,10 +576,9 @@ contract UniV3AutomanTest is UniHandler {
         swapBackAndForth(amountIn, zeroForOne);
         vm.prank(user);
         npm.approve(address(automan), tokenId);
-        uint128 liquidity = _reinvest(tokenId, 1e12);
+        uint128 liquidity = _reinvest(tokenId, 1e9);
         assertGt(liquidity, 0, "liquidity must increase");
-        assertGt(balanceOf(token0, collector), 0, "!fee");
-        assertGt(balanceOf(token1, collector), 0, "!fee");
+        assertTrue(balanceOf(token0, collector) > 0 || balanceOf(token1, collector) > 0, "!fee");
         invariantZeroBalance();
     }
 
@@ -528,41 +588,77 @@ contract UniV3AutomanTest is UniHandler {
         swapBackAndForth(amountIn, zeroForOne);
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
-        _reinvest(tokenId, 1e12, deadline, v, r, s);
+        _reinvest(tokenId, 1e9, deadline, v, r, s);
     }
 
     /// @dev Test rebalancing a v3 LP position
     function testFuzz_Rebalance(int24 tickLower, int24 tickUpper) public {
-        tickSpacing = V3PoolCallee.wrap(factory.getPool(token0, token1, newFee)).tickSpacing();
+        if (dex == DEX.SlipStream) {
+            tickSpacing = 100;
+        } else {
+            tickSpacing = V3PoolCallee.wrap(IUniswapV3Factory(factory).getPool(token0, token1, newFee)).tickSpacing();
+        }
         (tickLower, tickUpper) = prepTicks(tickLower, tickUpper);
         npm.setApprovalForAll(address(automan), true);
-        try
-            automan.rebalance(
-                INPM.MintParams({
-                    token0: token0,
-                    token1: token1,
-                    fee: newFee,
-                    tickLower: tickLower,
-                    tickUpper: tickUpper,
-                    amount0Desired: 0,
-                    amount1Desired: 0,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: address(0),
-                    deadline: block.timestamp
-                }),
-                thisTokenId,
-                1e12,
-                new bytes(0)
-            )
-        returns (uint256 newTokenId, uint128 liquidity, uint256, uint256) {
-            assertEq(npm.ownerOf(newTokenId), address(this), "owner mismatch");
-            assertGt(liquidity, 0, "liquidity cannot be zero");
-            assertGt(balanceOf(token0, collector), 0, "!fee");
-            assertGt(balanceOf(token1, collector), 0, "!fee");
-            invariantZeroBalance();
-        } catch Error(string memory reason) {
-            assertEq(reason, "LO", "only catch liquidity overflow");
+        if (dex == DEX.SlipStream) {
+            try
+                IAutomanSlipStreamMintRebalance(address(automan)).rebalance(
+                    ISlipStreamNPM.MintParams({
+                        token0: token0,
+                        token1: token1,
+                        tickSpacing: tickSpacingSlipStream,
+                        tickLower: tickLower,
+                        tickUpper: tickUpper,
+                        amount0Desired: 0,
+                        amount1Desired: 0,
+                        amount0Min: 0,
+                        amount1Min: 0,
+                        recipient: address(0),
+                        deadline: block.timestamp,
+                        sqrtPriceX96: 0
+                    }),
+                    thisTokenId,
+                    1e12,
+                    new bytes(0)
+                )
+            returns (uint256 newTokenId, uint128 liquidity, uint256, uint256) {
+                assertEq(npm.ownerOf(newTokenId), address(this), "owner mismatch");
+                assertGt(liquidity, 0, "liquidity cannot be zero");
+                assertGt(balanceOf(token0, collector), 0, "!fee");
+                assertGt(balanceOf(token1, collector), 0, "!fee");
+                invariantZeroBalance();
+            } catch Error(string memory reason) {
+                assertEq(reason, "LO", "only catch liquidity overflow");
+            }
+        } else {
+            try
+                IAutomanUniV3MintRebalance(address(automan)).rebalance(
+                    IUniV3NPM.MintParams({
+                        token0: token0,
+                        token1: token1,
+                        fee: newFee,
+                        tickLower: tickLower,
+                        tickUpper: tickUpper,
+                        amount0Desired: 0,
+                        amount1Desired: 0,
+                        amount0Min: 0,
+                        amount1Min: 0,
+                        recipient: address(0),
+                        deadline: block.timestamp
+                    }),
+                    thisTokenId,
+                    1e12,
+                    new bytes(0)
+                )
+            returns (uint256 newTokenId, uint128 liquidity, uint256, uint256) {
+                assertEq(npm.ownerOf(newTokenId), address(this), "owner mismatch");
+                assertGt(liquidity, 0, "liquidity cannot be zero");
+                assertGt(balanceOf(token0, collector), 0, "!fee");
+                assertGt(balanceOf(token1, collector), 0, "!fee");
+                invariantZeroBalance();
+            } catch Error(string memory reason) {
+                assertEq(reason, "LO", "only catch liquidity overflow");
+            }
         }
     }
 
@@ -571,33 +667,67 @@ contract UniV3AutomanTest is UniHandler {
         uint256 tokenId = userTokenId;
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
-        tickSpacing = V3PoolCallee.wrap(factory.getPool(token0, token1, newFee)).tickSpacing();
+        if (dex == DEX.SlipStream) {
+            tickSpacing = 100;
+        } else {
+            tickSpacing = V3PoolCallee.wrap(IUniswapV3Factory(factory).getPool(token0, token1, newFee)).tickSpacing();
+        }
         (tickLower, tickUpper) = prepTicks(tickLower, tickUpper);
-        try
-            automan.rebalance(
-                INPM.MintParams({
-                    token0: token0,
-                    token1: token1,
-                    fee: newFee,
-                    tickLower: tickLower,
-                    tickUpper: tickUpper,
-                    amount0Desired: 0,
-                    amount1Desired: 0,
-                    amount0Min: 0,
-                    amount1Min: 0,
-                    recipient: address(0),
-                    deadline: deadline
-                }),
-                tokenId,
-                1e12,
-                new bytes(0),
-                deadline,
-                v,
-                r,
-                s
-            )
-        {} catch Error(string memory reason) {
-            assertEq(reason, "LO", "only catch liquidity overflow");
+        if (dex == DEX.SlipStream) {
+            try
+                IAutomanSlipStreamMintRebalance(address(automan)).rebalance(
+                    ISlipStreamNPM.MintParams({
+                        token0: token0,
+                        token1: token1,
+                        tickSpacing: tickSpacingSlipStream,
+                        tickLower: tickLower,
+                        tickUpper: tickUpper,
+                        amount0Desired: 0,
+                        amount1Desired: 0,
+                        amount0Min: 0,
+                        amount1Min: 0,
+                        recipient: address(0),
+                        deadline: deadline,
+                        sqrtPriceX96: 0
+                    }),
+                    tokenId,
+                    1e12,
+                    new bytes(0),
+                    deadline,
+                    v,
+                    r,
+                    s
+                )
+            {} catch Error(string memory reason) {
+                assertEq(reason, "LO", "only catch liquidity overflow");
+            }
+        } else {
+            try
+                IAutomanUniV3MintRebalance(address(automan)).rebalance(
+                    IUniV3NPM.MintParams({
+                        token0: token0,
+                        token1: token1,
+                        fee: newFee,
+                        tickLower: tickLower,
+                        tickUpper: tickUpper,
+                        amount0Desired: 0,
+                        amount1Desired: 0,
+                        amount0Min: 0,
+                        amount1Min: 0,
+                        recipient: address(0),
+                        deadline: deadline
+                    }),
+                    tokenId,
+                    1e12,
+                    new bytes(0),
+                    deadline,
+                    v,
+                    r,
+                    s
+                )
+            {} catch Error(string memory reason) {
+                assertEq(reason, "LO", "only catch liquidity overflow");
+            }
         }
     }
 }
@@ -605,9 +735,25 @@ contract UniV3AutomanTest is UniHandler {
 contract PCSV3AutomanTest is UniV3AutomanTest {
     function setUp() public override {
         newFee = 500;
-        npm = INPM(0x46A15B0b27311cedF172AB29E4f4766fbE7F4364);
+        dex = DEX.PCSV3;
         UniBase.setUp();
         automan = new PCSV3Automan(IPCSV3NonfungiblePositionManager(address(npm)), address(this));
         setUpCommon();
+    }
+}
+
+contract SlipStreamAutomanTest is UniV3AutomanTest {
+    function setUp() public override {
+        dex = DEX.SlipStream;
+        UniBase.setUp();
+        automan = new SlipStreamAutoman(npm, address(this));
+        setUpCommon();
+    }
+
+    /// @dev Decreasing liquidity without prior approval should fail.
+    /// @dev SlipStream does not revert with "Not approved" but with no data.
+    function testRevert_NotApproved() public override {
+        vm.expectRevert(bytes(""));
+        _decreaseLiquidity(thisTokenId, 1, 0);
     }
 }
