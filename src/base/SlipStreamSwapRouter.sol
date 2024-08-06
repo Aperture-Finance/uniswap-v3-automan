@@ -24,6 +24,7 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
     /// = (MAX_SQRT_RATIO - 1) ^ ((MIN_SQRT_RATIO + 1 ^ MAX_SQRT_RATIO - 1) * zeroForOne)
     uint160 internal constant MAX_SQRT_RATIO_LESS_ONE = 1461446703485210103287273052203988822378723970342 - 1;
     /// @dev MIN_SQRT_RATIO + 1 ^ MAX_SQRT_RATIO - 1
+    /// @dev Can't refer to `MAX_SQRT_RATIO_LESS_ONE` in the expression since we want to use `XOR_SQRT_RATIO` in assembly.
     uint160 internal constant XOR_SQRT_RATIO =
         (4295128739 + 1) ^ (1461446703485210103287273052203988822378723970342 - 1);
 
