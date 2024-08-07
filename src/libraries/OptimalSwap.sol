@@ -335,7 +335,6 @@ library OptimalSwap {
         uint256 sqrtPriceX96;
         unchecked {
             uint256 liquidity;
-            uint256 sqrtRatioLowerX96;
             uint256 sqrtRatioUpperX96;
             uint256 feePips;
             uint256 FEE_COMPLEMENT;
@@ -344,8 +343,6 @@ library OptimalSwap {
                 liquidity := mload(state)
                 // sqrtPriceX96 = state.sqrtPriceX96
                 sqrtPriceX96 := mload(add(state, 0x20))
-                // sqrtRatioLowerX96 = state.sqrtRatioLowerX96
-                sqrtRatioLowerX96 := mload(add(state, 0xa0))
                 // sqrtRatioUpperX96 = state.sqrtRatioUpperX96
                 sqrtRatioUpperX96 := mload(add(state, 0xc0))
                 // feePips = state.feePips
@@ -369,7 +366,7 @@ library OptimalSwap {
                         revert(0x1c, 0x04)
                     }
                 }
-                b = a0.mulDivQ96(sqrtRatioLowerX96);
+                b = a0.mulDivQ96(state.sqrtRatioLowerX96);
                 assembly {
                     b := add(div(mul(feePips, liquidity), FEE_COMPLEMENT), b)
                 }
@@ -381,7 +378,7 @@ library OptimalSwap {
                     // c0 = amount1Desired + liquidity * sqrtPrice
                     c0 := add(mload(add(state, 0x80)), c0)
                 }
-                c = c0 - liquidity.mulDivQ96((MAX_FEE_PIPS * sqrtRatioLowerX96) / FEE_COMPLEMENT);
+                c = c0 - liquidity.mulDivQ96((MAX_FEE_PIPS * state.sqrtRatioLowerX96) / FEE_COMPLEMENT);
                 b -= c0.mulDiv(FixedPoint96.Q96, sqrtRatioUpperX96);
             }
             assembly {
@@ -424,7 +421,6 @@ library OptimalSwap {
         uint256 sqrtPriceX96;
         unchecked {
             uint256 liquidity;
-            uint256 sqrtRatioLowerX96;
             uint256 sqrtRatioUpperX96;
             uint256 feePips;
             uint256 FEE_COMPLEMENT;
@@ -433,8 +429,6 @@ library OptimalSwap {
                 liquidity := mload(state)
                 // sqrtPriceX96 = state.sqrtPriceX96
                 sqrtPriceX96 := mload(add(state, 0x20))
-                // sqrtRatioLowerX96 = state.sqrtRatioLowerX96
-                sqrtRatioLowerX96 := mload(add(state, 0xa0))
                 // sqrtRatioUpperX96 = state.sqrtRatioUpperX96
                 sqrtRatioUpperX96 := mload(add(state, 0xc0))
                 // feePips = state.feePips
@@ -451,7 +445,7 @@ library OptimalSwap {
                     a0 := add(mload(add(state, 0x60)), div(liquidityX96, sqrtPriceX96))
                     a := sub(a0, div(mul(MAX_FEE_PIPS, liquidityX96), mul(FEE_COMPLEMENT, sqrtRatioUpperX96)))
                 }
-                b = a0.mulDivQ96(sqrtRatioLowerX96);
+                b = a0.mulDivQ96(state.sqrtRatioLowerX96);
                 assembly {
                     b := sub(b, div(mul(feePips, liquidity), FEE_COMPLEMENT))
                 }
@@ -466,7 +460,7 @@ library OptimalSwap {
                     // c0 = amount1Desired + liquidity * sqrtPrice / (1 - f)
                     c0 := add(amount1Desired, c0)
                 }
-                c = c0 - liquidity.mulDivQ96(sqrtRatioLowerX96);
+                c = c0 - liquidity.mulDivQ96(state.sqrtRatioLowerX96);
                 assembly ("memory-safe") {
                     // `c` is always positive and greater than `amount1Desired`.
                     if iszero(gt(c, amount1Desired)) {
@@ -475,7 +469,7 @@ library OptimalSwap {
                         revert(0x1c, 0x04)
                     }
                 }
-                b -= c0.mulDiv(FixedPoint96.Q96, state.sqrtRatioUpperX96);
+                b -= c0.mulDiv(FixedPoint96.Q96, sqrtRatioUpperX96);
             }
             assembly {
                 a := shl(1, a)

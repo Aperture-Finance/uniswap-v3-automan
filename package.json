@@ -7,8 +7,8 @@
     "compile": "forge build",
     "size": "forge build --sizes",
     "test": "forge test",
-    "snapshot": "forge snapshot",
-    "snapshot:diff": "forge snapshot --diff",
+    "snapshot": "forge snapshot --isolate",
+    "snapshot:diff": "forge snapshot --diff --isolate",
     "prettier": "prettier -c {script,src,test}/**/*.sol",
     "prettier:fix": "prettier -w {script,src,test}/**/*.sol",
     "typechain": "hardhat typechain"
