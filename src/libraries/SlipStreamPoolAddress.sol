@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.5.0;
 
+import {TernaryLib} from "@aperture_finance/uni-v3-lib/src/TernaryLib.sol";
+
 interface ISlipStreamCLFactory {
     /// @notice The address of the pool implementation contract used to deploy proxies / clones
     /// @return The address of the pool implementation contract
@@ -22,7 +24,7 @@ library SlipStreamPoolAddress {
     /// @param tickSpacing The tick spacing of the pool
     /// @return Poolkey The pool details with ordered token0 and token1 assignments
     function getPoolKey(address tokenA, address tokenB, int24 tickSpacing) internal pure returns (PoolKey memory) {
-        if (tokenA > tokenB) (tokenA, tokenB) = (tokenB, tokenA);
+        if (tokenA > tokenB) (tokenA, tokenB) = TernaryLib.sort2(tokenA, tokenB);
         return PoolKey({token0: tokenA, token1: tokenB, tickSpacing: tickSpacing});
     }
 
@@ -57,7 +59,7 @@ library SlipStreamPoolAddress {
     function computeAddressSorted(address factory, PoolKey memory key) internal view returns (address pool) {
         pool = predictDeterministicAddress({
             master: ISlipStreamCLFactory(factory).poolImplementation(),
-            salt: keccak256(abi.encode(key.token0, key.token1, key.tickSpacing)),
+            salt: keccak256(abi.encode(key)),
             deployer: factory
         });
     }
