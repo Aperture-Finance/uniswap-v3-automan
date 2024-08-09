@@ -74,11 +74,15 @@ contract SlipStreamOptimalSwapRouter is SlipStreamSwapRouter {
                 int24 tickLower;
                 int24 tickUpper;
                 assembly {
-                    tickSpacing := sar(232, calldataload(40))  
-                    tickLower := sar(232, calldataload(43))  
+                    tickSpacing := sar(232, calldataload(40))
+                    tickLower := sar(232, calldataload(43))
                     tickUpper := sar(232, calldataload(46))
                 }
-                SlipStreamPoolAddress.PoolKey memory poolKey = SlipStreamPoolAddress.PoolKey(token0, token1, tickSpacing); 
+                SlipStreamPoolAddress.PoolKey memory poolKey = SlipStreamPoolAddress.PoolKey(
+                    token0,
+                    token1,
+                    tickSpacing
+                );
                 address pool = computeAddressSorted(poolKey);
                 uint256 amount0Desired;
                 uint256 amount1Desired;
