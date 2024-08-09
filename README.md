@@ -57,8 +57,6 @@ Third, install [Foundry](https://github.com/foundry-rs/foundry). Install git sub
 forge install
 ```
 
-As of July 2024, `via_ir` cannot be enabled as it causes build failures, and this is a known issue for large projects.
-
 When `via_ir` is enabled in [`foundry.toml`](foundry.toml), it takes one to two minutes to compile the project via
 the IR pipeline. For faster compilation and testing, the lite profile can be enabled by setting the environment
 variable `FOUNDRY_PROFILE` to `lite` which shortens the compilation time to about 10 seconds.
