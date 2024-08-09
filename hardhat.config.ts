@@ -15,7 +15,7 @@ const config: HardhatUserConfig = {
         enabled: true,
         runs: 4294967295
       },
-      viaIR: false,
+      viaIR: true,
       evmVersion: "paris",
       metadata: {
         bytecodeHash: "none"
