@@ -64,7 +64,9 @@ contract DeploySlipStreamAutoman is Script {
         console2.log("SlipStreamAutoman initCodeHash:");
         console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
-        SlipStreamAutoman automan = SlipStreamAutoman(payable(create2deployer.computeAddress(automanSalt, initCodeHash)));
+        SlipStreamAutoman automan = SlipStreamAutoman(
+            payable(create2deployer.computeAddress(automanSalt, initCodeHash))
+        );
         if (address(automan).code.length == 0) {
             // Deploy automan
             create2deployer.deploy(0, automanSalt, initCode);
