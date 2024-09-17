@@ -594,8 +594,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         ISlipStreamNPM.MintParams memory params,
         bytes calldata swapData,
         uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        uint160
+        uint256 token1FeeAmount
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         SlipStreamPoolAddress.PoolKey memory poolKey = castPoolKey(params);
         uint256 amount0Desired = params.amount0Desired;

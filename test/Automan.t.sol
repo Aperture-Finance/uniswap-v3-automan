@@ -156,8 +156,7 @@ contract UniV3AutomanTest is UniHandler {
                 }),
                 abi.encodePacked(npm),
                 /* token0FeeAmount= */ 0,
-                /* token1FeeAmount= */ 0,
-                /* sqrtPriceX96= */ 0
+                /* token1FeeAmount= */ 0
             );
         } else {
             IAutomanUniV3MintRebalance(address(automan)).mintOptimal(
@@ -353,8 +352,7 @@ contract UniV3AutomanTest is UniHandler {
                 }),
                 new bytes(0),
                 /* token0FeeAmount= */ 0,
-                /* token1FeeAmount= */ 0,
-                /* sqrtPriceX96= */ 0
+                /* token1FeeAmount= */ 0
             );
         } else {
             IAutomanUniV3MintRebalance(address(automan)).mintOptimal(

@@ -397,6 +397,7 @@ interface IAutomanUniV3MintRebalance {
     /// @param swapData The address of the external router and call data
     /// @param token0FeeAmount The amount of token0 to send to feeCollector
     /// @param token1FeeAmount The amount of token1 to send to feeCollector
+    /// @param sqrtPriceX96 The pool price to create and initilize pool if necessary
     /// @return tokenId The ID of the token that represents the minted position
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0 spent
@@ -518,7 +519,6 @@ interface IAutomanSlipStreamMintRebalance {
     /// @param swapData The address of the external router and call data
     /// @param token0FeeAmount The amount of token0 to send to feeCollector
     /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param sqrtPriceX96 The pool price to create and initilize pool if necessary
     /// @return tokenId The ID of the token that represents the minted position
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0 spent
@@ -527,8 +527,7 @@ interface IAutomanSlipStreamMintRebalance {
         ISlipStreamNPM.MintParams memory params,
         bytes calldata swapData,
         uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        uint160 sqrtPriceX96
+        uint256 token1FeeAmount
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range
