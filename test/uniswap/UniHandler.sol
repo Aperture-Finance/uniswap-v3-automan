@@ -135,7 +135,8 @@ contract UniHandler is UniBase {
                             amount1Min: 0,
                             recipient: recipient,
                             deadline: block.timestamp
-                        })
+                        }),
+                        /* sqrtPriceX96= */ 0
                     )
                 returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
                     tokenId = _tokenId;
@@ -176,7 +177,10 @@ contract UniHandler is UniBase {
                         deadline: block.timestamp,
                         sqrtPriceX96: 0
                     }),
-                    swapData
+                    swapData,
+                    /* token0FeeAmount= */ 0,
+                    /* token1FeeAmount= */ 0,
+                    /* sqrtPriceX96= */ 0
                 )
             returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
                 tokenId = _tokenId;
@@ -200,7 +204,10 @@ contract UniHandler is UniBase {
                         recipient: recipient,
                         deadline: block.timestamp
                     }),
-                    swapData
+                    swapData,
+                    /* token0FeeAmount= */ 0,
+                    /* token1FeeAmount= */ 0,
+                    /* sqrtPriceX96= */ 0
                 )
             returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
                 tokenId = _tokenId;
@@ -278,7 +285,9 @@ contract UniHandler is UniBase {
                     amount1Min: 0,
                     deadline: block.timestamp
                 }),
-                new bytes(0)
+                /* swapData= */ new bytes(0),
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0
             )
         returns (uint128 _liquidity, uint256, uint256) {
             liquidity = _liquidity;
@@ -291,11 +300,13 @@ contract UniHandler is UniBase {
     function _decreaseLiquidity(
         uint256 tokenId,
         uint128 liquidityDelta,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
-            feePips
+            token0FeeAmount,
+            token1FeeAmount
         );
     }
 
@@ -304,18 +315,24 @@ contract UniHandler is UniBase {
         uint256 tokenId,
         uint128 liquidityDelta,
         bool zeroForOne,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) internal returns (uint256 amount) {
         amount = automan.decreaseLiquiditySingle(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
             zeroForOne,
-            feePips,
+            token0FeeAmount,
+            token1FeeAmount,
             new bytes(0)
         );
     }
 
     /// @dev Remove liquidity of a v3 LP position through Automan
-    function _removeLiquidity(uint256 tokenId, uint256 feePips) internal returns (uint256 amount0, uint256 amount1) {
+    function _removeLiquidity(
+        uint256 tokenId,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
+    ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = automan.removeLiquidity(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
@@ -324,7 +341,8 @@ contract UniHandler is UniBase {
                 amount1Min: 0,
                 deadline: block.timestamp
             }),
-            feePips
+            token0FeeAmount,
+            token1FeeAmount
         );
     }
 
@@ -332,7 +350,8 @@ contract UniHandler is UniBase {
     function _removeLiquiditySingle(
         uint256 tokenId,
         bool zeroForOne,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) internal returns (uint256 amount) {
         amount = automan.removeLiquiditySingle(
             INPM.DecreaseLiquidityParams({
@@ -343,13 +362,18 @@ contract UniHandler is UniBase {
                 deadline: block.timestamp
             }),
             zeroForOne,
-            feePips,
+            token0FeeAmount,
+            token1FeeAmount,
             new bytes(0)
         );
     }
 
     /// @dev Reinvest fees
-    function _reinvest(uint256 tokenId, uint256 feePips) internal returns (uint128 liquidity) {
+    function _reinvest(
+        uint256 tokenId,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
+    ) internal returns (uint128 liquidity) {
         (liquidity, , ) = automan.reinvest(
             INPM.IncreaseLiquidityParams({
                 tokenId: tokenId,
@@ -359,7 +383,8 @@ contract UniHandler is UniBase {
                 amount1Min: 0,
                 deadline: block.timestamp
             }),
-            feePips,
+            token0FeeAmount,
+            token1FeeAmount,
             new bytes(0)
         );
     }
@@ -367,7 +392,8 @@ contract UniHandler is UniBase {
     /// @dev Reinvest fees
     function _reinvest(
         uint256 tokenId,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         uint256 deadline,
         uint8 v,
         bytes32 r,
@@ -382,7 +408,8 @@ contract UniHandler is UniBase {
                 amount1Min: 0,
                 deadline: block.timestamp
             }),
-            feePips,
+            token0FeeAmount,
+            token1FeeAmount,
             new bytes(0),
             deadline,
             v,
@@ -395,7 +422,8 @@ contract UniHandler is UniBase {
         uint256 tokenId,
         int24 tickLower,
         int24 tickUpper,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) internal returns (uint256 newTokenId) {
         if (dex == DEX.SlipStream) {
             (newTokenId, , , ) = IAutomanSlipStreamMintRebalance(address(automan)).rebalance(
@@ -414,7 +442,8 @@ contract UniHandler is UniBase {
                     sqrtPriceX96: 0
                 }),
                 tokenId,
-                feePips,
+                token0FeeAmount,
+                token1FeeAmount,
                 new bytes(0)
             );
         } else {
@@ -433,7 +462,8 @@ contract UniHandler is UniBase {
                     deadline: block.timestamp
                 }),
                 tokenId,
-                feePips,
+                token0FeeAmount,
+                token1FeeAmount,
                 new bytes(0)
             );
         }
@@ -521,7 +551,12 @@ contract UniHandler is UniBase {
                 liquidityDelta = uint128(bound(liquidityDelta, 1, liquidity));
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
                 npm.approve(address(automan), tokenId);
-                (amount0, amount1) = _decreaseLiquidity(tokenId, liquidityDelta, 0);
+                (amount0, amount1) = _decreaseLiquidity(
+                    tokenId,
+                    liquidityDelta,
+                    /* token0FeeAmount= */ 0,
+                    /* token1FeeAmount= */ 0
+                );
                 countCall("decreaseLiquidity");
             }
         }
@@ -540,7 +575,13 @@ contract UniHandler is UniBase {
                 liquidityDelta = uint128(bound(liquidityDelta, 1, liquidity));
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
                 npm.approve(address(automan), tokenId);
-                amount = _decreaseLiquiditySingle(tokenId, liquidityDelta, zeroForOne, 0);
+                amount = _decreaseLiquiditySingle(
+                    tokenId,
+                    liquidityDelta,
+                    zeroForOne,
+                    /* token0FeeAmount= */ 0,
+                    /* token1FeeAmount= */ 0
+                );
                 countCall("decreaseLiquiditySingle");
             }
         }
@@ -554,7 +595,7 @@ contract UniHandler is UniBase {
             if (liquidity != 0) {
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
                 npm.approve(address(automan), tokenId);
-                (amount0, amount1) = _removeLiquidity(tokenId, 0);
+                (amount0, amount1) = _removeLiquidity(tokenId, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
                 _tokenIds.remove(tokenId);
                 countCall("removeLiquidity");
             }
@@ -569,7 +610,12 @@ contract UniHandler is UniBase {
             if (liquidity != 0) {
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
                 npm.approve(address(automan), tokenId);
-                amount = _removeLiquiditySingle(tokenId, zeroForOne, 0);
+                amount = _removeLiquiditySingle(
+                    tokenId,
+                    zeroForOne,
+                    /* token0FeeAmount= */ 0,
+                    /* token1FeeAmount= */ 0
+                );
                 _tokenIds.remove(tokenId);
                 countCall("removeLiquiditySingle");
             }
@@ -604,7 +650,7 @@ contract UniHandler is UniBase {
             ) {
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
                 npm.approve(address(automan), tokenId);
-                _reinvest(tokenId, 0);
+                _reinvest(tokenId, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
                 countCall("reinvest");
             }
         }
@@ -617,7 +663,7 @@ contract UniHandler is UniBase {
             (tickLower, tickUpper) = prepTicks(tickLower, tickUpper);
             vm.prank(NPMCaller.ownerOf(npm, tokenId));
             npm.approve(address(automan), tokenId);
-            newTokenId = _rebalance(tokenId, tickLower, tickUpper, 0);
+            newTokenId = _rebalance(tokenId, tickLower, tickUpper, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
             _tokenIds.remove(tokenId);
             _tokenIds.add(newTokenId);
             countCall("rebalance");

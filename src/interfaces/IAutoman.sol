@@ -108,12 +108,16 @@ interface IAutomanCommon {
     /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
     /// deadline The time by which the transaction must be included to effect the change
     /// @param swapData The address of the external router and call data
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @return liquidity The new liquidity amount as a result of the increase
     /// @return amount0 The amount of token0 to achieve resulting liquidity
     /// @return amount1 The amount of token1 to achieve resulting liquidity
     function increaseLiquidityOptimal(
         INPM.IncreaseLiquidityParams memory params,
-        bytes calldata swapData
+        bytes calldata swapData,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Decreases the amount of liquidity in a position and accounts it to the position
@@ -124,12 +128,14 @@ interface IAutomanCommon {
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @return amount0 The amount of token0 returned minus fees
     /// @return amount1 The amount of token1 returned minus fees
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) external returns (uint256 amount0, uint256 amount1);
 
     /// @notice Decreases the amount of liquidity in a position and accounts it to the position using permit
@@ -140,7 +146,8 @@ interface IAutomanCommon {
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
     /// @param r Half of the ECDSA signature pair
@@ -149,7 +156,8 @@ interface IAutomanCommon {
     /// @return amount1 The amount of token1 returned minus fees
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
@@ -165,13 +173,15 @@ interface IAutomanCommon {
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
     /// @param zeroForOne True if token0 is being swapped for token1, false otherwise
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @return amount The total amount of desired token returned minus fees
     function decreaseLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint256 amount);
 
@@ -184,7 +194,8 @@ interface IAutomanCommon {
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
     /// @param zeroForOne True if token0 is being swapped for token1, false otherwise
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
@@ -194,7 +205,8 @@ interface IAutomanCommon {
     function decreaseLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
@@ -209,12 +221,14 @@ interface IAutomanCommon {
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @return amount0 The amount of token0 returned minus fees
     /// @return amount1 The amount of token1 returned minus fees
     function removeLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) external returns (uint256 amount0, uint256 amount1);
 
     /// @notice Removes all liquidity from a position using permit
@@ -224,7 +238,8 @@ interface IAutomanCommon {
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
     /// @param r Half of the ECDSA signature pair
@@ -233,7 +248,8 @@ interface IAutomanCommon {
     /// @return amount1 The amount of token1 returned minus fees
     function removeLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
@@ -248,13 +264,15 @@ interface IAutomanCommon {
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
     /// @param zeroForOne True if token0 is being swapped for token1, false otherwise
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @return amount The total amount of desired token returned minus fees
     function removeLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint256 amount);
 
@@ -266,7 +284,8 @@ interface IAutomanCommon {
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
     /// @param zeroForOne True if token0 is being swapped for token1, false otherwise
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
@@ -276,7 +295,8 @@ interface IAutomanCommon {
     function removeLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
@@ -291,14 +311,16 @@ interface IAutomanCommon {
     /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
     /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @return liquidity The new liquidity amount as a result of the increase
     /// @return amount0 The amount of token0 to achieve resulting liquidity
     /// @return amount1 The amount of token1 to achieve resulting liquidity
     function reinvest(
         INPM.IncreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
@@ -309,7 +331,8 @@ interface IAutomanCommon {
     /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
     /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
@@ -320,7 +343,8 @@ interface IAutomanCommon {
     /// @return amount1 The amount of token1 to achieve resulting liquidity
     function reinvest(
         INPM.IncreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
@@ -345,12 +369,14 @@ interface IAutomanUniV3MintRebalance {
     /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
+    /// @param sqrtPriceX96 The pool price to create and initilize pool if necessary
     /// @return tokenId The ID of the token that represents the minted position
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0 spent
     /// @return amount1 The amount of token1 spent
     function mint(
-        IUniV3NPM.MintParams memory params
+        IUniV3NPM.MintParams memory params,
+        uint160 sqrtPriceX96
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Creates a new position wrapped in a NFT using optimal swap
@@ -369,13 +395,18 @@ interface IAutomanUniV3MintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param swapData The address of the external router and call data
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @return tokenId The ID of the token that represents the minted position
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0 spent
     /// @return amount1 The amount of token1 spent
     function mintOptimal(
         IUniV3NPM.MintParams memory params,
-        bytes calldata swapData
+        bytes calldata swapData,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
+        uint160 sqrtPriceX96
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range
@@ -392,7 +423,8 @@ interface IAutomanUniV3MintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param tokenId The ID of the position to rebalance
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
@@ -401,7 +433,8 @@ interface IAutomanUniV3MintRebalance {
     function rebalance(
         IUniV3NPM.MintParams memory params,
         uint256 tokenId,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
@@ -419,7 +452,8 @@ interface IAutomanUniV3MintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param tokenId The ID of the position to rebalance
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
@@ -432,7 +466,8 @@ interface IAutomanUniV3MintRebalance {
     function rebalance(
         IUniV3NPM.MintParams memory params,
         uint256 tokenId,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
@@ -481,13 +516,19 @@ interface IAutomanSlipStreamMintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param swapData The address of the external router and call data
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
+    /// @param sqrtPriceX96 The pool price to create and initilize pool if necessary
     /// @return tokenId The ID of the token that represents the minted position
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0 spent
     /// @return amount1 The amount of token1 spent
     function mintOptimal(
         ISlipStreamNPM.MintParams memory params,
-        bytes calldata swapData
+        bytes calldata swapData,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
+        uint160 sqrtPriceX96
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range
@@ -504,7 +545,8 @@ interface IAutomanSlipStreamMintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param tokenId The ID of the position to rebalance
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
@@ -513,7 +555,8 @@ interface IAutomanSlipStreamMintRebalance {
     function rebalance(
         ISlipStreamNPM.MintParams memory params,
         uint256 tokenId,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
@@ -531,7 +574,8 @@ interface IAutomanSlipStreamMintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param tokenId The ID of the position to rebalance
-    /// @param feePips The fee in pips to be collected
+    /// @param token0FeeAmount The amount of token0 to send to feeCollector
+    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
@@ -544,7 +588,8 @@ interface IAutomanSlipStreamMintRebalance {
     function rebalance(
         ISlipStreamNPM.MintParams memory params,
         uint256 tokenId,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
