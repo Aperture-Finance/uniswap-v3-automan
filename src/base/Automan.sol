@@ -5,7 +5,7 @@ import "solady/src/utils/SafeTransferLib.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
-import "@uniswap/v3-periphery/contracts/base/PoolInitializer.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/IPoolInitializer.sol";
 import {ICommonNonfungiblePositionManager as INPM, IUniswapV3NonfungiblePositionManager as IUniV3NPM} from "@aperture_finance/uni-v3-lib/src/interfaces/IUniswapV3NonfungiblePositionManager.sol";
 import {LiquidityAmounts} from "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import {NPMCaller, Position} from "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
@@ -18,7 +18,7 @@ import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "../libraries/Optima
 /// @author Aperture Finance
 /// @dev The validity of the tokens in `poolKey` and the pool contract computed from it is not checked here.
 /// However if they are invalid, pool `swap`, `burn` and `mint` will revert here or in `NonfungiblePositionManager`.
-abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3MintRebalance, IPoolInitializer {
+abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3MintRebalance {
     using SafeTransferLib for address;
     using FullMath for uint256;
     using TickMath for int24;
@@ -584,7 +584,12 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         pullAndApprove(params.token0, params.token1, params.amount0Desired, params.amount1Desired);
         // Create and initialize the pool if necessary.
         if (sqrtPriceX96 != 0) {
-            createAndInitializePoolIfNecessary(params.token0, params.token1, params.fee, sqrtPriceX96);
+            IPoolInitializer(address(npm)).createAndInitializePoolIfNecessary(
+                params.token0,
+                params.token1,
+                params.fee,
+                sqrtPriceX96
+            );
         }
         (tokenId, liquidity, amount0, amount1) = _mint(params);
         emit Mint(tokenId);
@@ -617,7 +622,12 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         );
         // Create and initialize the pool if necessary.
         if (sqrtPriceX96 != 0) {
-            createAndInitializePoolIfNecessary(params.token0, params.token1, params.fee, sqrtPriceX96);
+            IPoolInitializer(address(npm)).createAndInitializePoolIfNecessary(
+                params.token0,
+                params.token1,
+                params.fee,
+                sqrtPriceX96
+            );
         }
         (tokenId, liquidity, amount0, amount1) = _mint(params);
         emit Mint(tokenId);
