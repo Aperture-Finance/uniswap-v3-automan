@@ -35,7 +35,7 @@ jobs:
         uses: foundry-rs/foundry-toolchain@v1
 
       - name: Run Forge build
-        run: forge build --via-ir
+        run: forge build
 
       - name: Run tests
         run: forge test -vvv
