@@ -285,8 +285,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     }
 
     /// @dev Internal collect gas and aperture fees abstraction
-    /// @param token0MinusAbleAmount The amount of token0 that can minus fees, usually combination of principal and collectedFeesFromProvidingLiquidty
-    /// @param token1MinusAbleAmount The amount of token1 that can minus fees, usually combination of principal and collectedFeesFromProvidingLiquidty
+    /// @param token0MinusAbleAmount The amount of token0 collected or zapped in that can minus fees
+    /// @param token1MinusAbleAmount The amount of token1 collected or zapped in that can minus fees
     function _minusFees(
         address token0,
         address token1,
@@ -324,15 +324,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     ) private returns (uint256, uint256) {
         // Collect the fees collected from providing liquidity.
         (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId);
-        return
-            _minusFees(
-                token0,
-                token1,
-                amount0Collected,
-                amount1Collected,
-                token0FeeAmount,
-                token1FeeAmount
-            );
+        return _minusFees(token0, token1, amount0Collected, amount1Collected, token0FeeAmount, token1FeeAmount);
     }
 
     /// @dev Internal decrease liquidity abstraction
@@ -346,13 +338,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
         NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees.
-        (amount0, amount1) = _collectMinusFees(
-            tokenId,
-            pos.token0,
-            pos.token1,
-            token0FeeAmount,
-            token1FeeAmount
-        );
+        (amount0, amount1) = _collectMinusFees(tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
         // Send the remaining amounts to the position owner
         address owner = NPMCaller.ownerOf(npm, tokenId);
         if (amount0 != 0) refund(pos.token0, owner, amount0);
@@ -427,13 +413,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         params.liquidity = pos.liquidity;
         NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees
-        (amount0, amount1) = _collectMinusFees(
-            tokenId,
-            token0,
-            token1,
-            token0FeeAmount,
-            token1FeeAmount
-        );
+        (amount0, amount1) = _collectMinusFees(tokenId, token0, token1, token0FeeAmount, token1FeeAmount);
     }
 
     /// @dev Internal remove liquidity abstraction
