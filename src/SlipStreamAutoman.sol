@@ -289,8 +289,8 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     }
 
     /// @dev Internal collect gas and aperture fees abstraction
-    /// @param token0MinusAbleAmount The amount of token0 that can minus fees, usually combination of principal and collectedFeesFromProvidingLiquidty
-    /// @param token1MinusAbleAmount The amount of token1 that can minus fees, usually combination of principal and collectedFeesFromProvidingLiquidty
+    /// @param token0MinusAbleAmount The amount of token0 collected or zapped in that can minus fees
+    /// @param token1MinusAbleAmount The amount of token1 collected or zapped in that can minus fees
     function _minusFees(
         address token0,
         address token1,

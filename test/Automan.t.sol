@@ -205,7 +205,7 @@ contract UniV3AutomanTest is UniHandler {
     }
 
     /// @dev Should revert if the fee is greater than the limit
-    function testRevert_FeeLimitExceeded() public {
+    function testRevert_FeeLimitExceeded() public virtual {
         npm.approve(address(automan), thisTokenId);
         vm.expectRevert(IAutomanCommon.FeeLimitExceeded.selector);
         _decreaseLiquidity(thisTokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 1000);
@@ -610,26 +610,26 @@ contract UniV3AutomanTest is UniHandler {
 
     /// @dev Test reinvesting a v3 LP position
     function testFuzz_Reinvest(uint256 amountIn, bool zeroForOne) public {
-        amountIn = amountIn < 1e9 ? 1e9 : amountIn; // Set amountIn large enough to collect 123 of token0 and 456 of token1
+        amountIn = amountIn < 1e9 ? 1e9 : amountIn; // Set amountIn large enough to collect 1 of token0 and 2 of token1
         uint256 tokenId = userTokenId;
         swapBackAndForth(amountIn, zeroForOne);
         vm.prank(user);
         npm.approve(address(automan), tokenId);
-        uint128 liquidity = _reinvest(tokenId, /* token0FeeAmount= */ 123, /* token1FeeAmount= */ 456);
+        uint128 liquidity = _reinvest(tokenId, /* token0FeeAmount= */ 1, /* token1FeeAmount= */ 2);
         assertGt(liquidity, 0, "liquidity must increase");
-        assertEq(balanceOf(token0, collector), 123, "!fee");
-        assertEq(balanceOf(token1, collector), 456, "!fee");
+        assertEq(balanceOf(token0, collector), 1, "!fee");
+        assertEq(balanceOf(token1, collector), 2, "!fee");
         invariantZeroBalance();
     }
 
     /// @dev Test reinvesting a v3 LP position with permit
     function testFuzz_Reinvest_WithPermit(uint256 amountIn, bool zeroForOne) public {
-        amountIn = amountIn < 1e9 ? 1e9 : amountIn;
+        amountIn = amountIn < 1e9 ? 1e9 : amountIn; // Set amountIn large enough to collect 1 of token0 and 2 of token1
         uint256 tokenId = userTokenId;
         swapBackAndForth(amountIn, zeroForOne);
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
-        _reinvest(tokenId, /* token0FeeAmount= */ 123, /* token1FeeAmount= */ 456, deadline, v, r, s);
+        _reinvest(tokenId, /* token0FeeAmount= */ 1, /* token1FeeAmount= */ 2, deadline, v, r, s);
     }
 
     /// @dev Test rebalancing a v3 LP position
@@ -800,5 +800,12 @@ contract SlipStreamAutomanTest is UniV3AutomanTest {
     function testRevert_NotApproved() public override {
         vm.expectRevert(bytes(""));
         _decreaseLiquidity(thisTokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+    }
+
+    /// @dev The position on Slipstrteam has a different amount of collectable tokens.
+    function testRevert_FeeLimitExceeded() public override {
+        npm.approve(address(automan), thisTokenId);
+        vm.expectRevert(IAutomanCommon.FeeLimitExceeded.selector);
+        _decreaseLiquidity(thisTokenId, 1, /* token0FeeAmount= */ 5000, /* token1FeeAmount= */ 0);
     }
 }
