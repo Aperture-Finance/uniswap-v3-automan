@@ -317,30 +317,18 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     }
 
     /// @dev Collect the tokens owed, deduct gas and aperture fees and send it to the fee collector
-    /// @param token0MinusAbleAmount The amount of token0 that can minus fees before collecting
-    /// @param token1MinusAbleAmount The amount of token1 that can minus fees before collecting
     /// @return amount0 The amount of token0 after fees
     /// @return amount1 The amount of token1 after fees
     function _collectMinusFees(
         uint256 tokenId,
         address token0,
         address token1,
-        uint256 token0MinusAbleAmount,
-        uint256 token1MinusAbleAmount,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount
     ) private returns (uint256, uint256) {
         // Collect the fees collected from providing liquidity.
         (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId);
-        return
-            _minusFees(
-                token0,
-                token1,
-                token0MinusAbleAmount + amount0Collected,
-                token1MinusAbleAmount + amount1Collected,
-                token0FeeAmount,
-                token1FeeAmount
-            );
+        return _minusFees(token0, token1, amount0Collected, amount1Collected, token0FeeAmount, token1FeeAmount);
     }
 
     /// @dev Internal decrease liquidity abstraction
@@ -352,17 +340,9 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         uint256 tokenId = params.tokenId;
         SlipStreamPosition memory pos = _positions(tokenId);
         // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
-        (uint256 amount0Delta, uint256 amount1Delta) = NPMCaller.decreaseLiquidity(npm, params);
+        NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees.
-        (amount0, amount1) = _collectMinusFees(
-            tokenId,
-            pos.token0,
-            pos.token1,
-            amount0Delta,
-            amount1Delta,
-            token0FeeAmount,
-            token1FeeAmount
-        );
+        (amount0, amount1) = _collectMinusFees(tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
         // Send the remaining amounts to the position owner
         address owner = NPMCaller.ownerOf(npm, tokenId);
         if (amount0 != 0) refund(pos.token0, owner, amount0);
@@ -387,16 +367,13 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             amountMin = params.amount0Min;
             params.amount0Min = 0;
         }
-        // Reuse the `amount0Min` and `amount1Min` fields to avoid stack too deep error
-        (params.amount0Min, params.amount1Min) = NPMCaller.decreaseLiquidity(npm, params);
+        NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees.
         uint256 tokenId = params.tokenId;
         (uint256 amount0, uint256 amount1) = _collectMinusFees(
             tokenId,
             pos.token0,
             pos.token1,
-            params.amount0Min,
-            params.amount1Min,
             token0FeeAmount,
             token1FeeAmount
         );
@@ -438,17 +415,9 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         token1 = pos.token1;
         // Update `params.liquidity` to the current liquidity
         params.liquidity = pos.liquidity;
-        (uint256 amount0Delta, uint256 amount1Delta) = NPMCaller.decreaseLiquidity(npm, params);
+        NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees
-        (amount0, amount1) = _collectMinusFees(
-            tokenId,
-            token0,
-            token1,
-            amount0Delta,
-            amount1Delta,
-            token0FeeAmount,
-            token1FeeAmount
-        );
+        (amount0, amount1) = _collectMinusFees(tokenId, token0, token1, token0FeeAmount, token1FeeAmount);
     }
 
     /// @dev Internal remove liquidity abstraction
@@ -500,7 +469,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         {
             // Calculate the principal amounts
             (uint160 sqrtPriceX96, ) = V3PoolCallee.wrap(computeAddressSorted(poolKey)).sqrtPriceX96AndTick();
-            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
                 pos.tickLower.getSqrtRatioAtTick(),
                 pos.tickUpper.getSqrtRatioAtTick(),
@@ -512,8 +481,6 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             params.tokenId,
             pos.token0,
             pos.token1,
-            amount0,
-            amount1,
             token0FeeAmount,
             token1FeeAmount
         );
