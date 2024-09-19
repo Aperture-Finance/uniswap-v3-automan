@@ -802,7 +802,7 @@ contract SlipStreamAutomanTest is UniV3AutomanTest {
         _decreaseLiquidity(thisTokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
     }
 
-    /// @dev The position on Slipstrteam has a different amount of collectable tokens.
+    /// @dev The position on Slipstream has a different amount of collectable tokens.
     function testRevert_FeeLimitExceeded() public override {
         npm.approve(address(automan), thisTokenId);
         vm.expectRevert(IAutomanCommon.FeeLimitExceeded.selector);
