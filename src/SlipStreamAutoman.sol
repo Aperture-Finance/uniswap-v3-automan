@@ -568,7 +568,14 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         if (params.amount0Desired != 0) pay(poolKey.token0, msg.sender, address(this), params.amount0Desired);
         if (params.amount1Desired != 0) pay(poolKey.token1, msg.sender, address(this), params.amount1Desired);
         // Collect zap-in fees before swap.
-        _minusFees(poolKey.token0, poolKey.token1, params.amount0Desired, params.amount1Desired, token0FeeAmount, token1FeeAmount);
+        _minusFees(
+            poolKey.token0,
+            poolKey.token1,
+            params.amount0Desired,
+            params.amount1Desired,
+            token0FeeAmount,
+            token1FeeAmount
+        );
         params.amount0Desired -= token0FeeAmount;
         params.amount1Desired -= token1FeeAmount;
         // Perform optimal swap after which the amounts desired are updated
