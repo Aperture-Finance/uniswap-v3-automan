@@ -571,20 +571,20 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         uint160 sqrtPriceX96
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         PoolKey memory poolKey = castPoolKey(params);
-        uint256 amount0Desired = params.amount0Desired;
-        uint256 amount1Desired = params.amount1Desired;
         // Pull tokens
-        if (amount0Desired != 0) pay(poolKey.token0, msg.sender, address(this), amount0Desired);
-        if (amount1Desired != 0) pay(poolKey.token1, msg.sender, address(this), amount1Desired);
+        if (params.amount0Desired != 0) pay(poolKey.token0, msg.sender, address(this), params.amount0Desired);
+        if (params.amount1Desired != 0) pay(poolKey.token1, msg.sender, address(this), params.amount1Desired);
         // Collect zap-in fees before swap.
-        _minusFees(poolKey.token0, poolKey.token1, amount0Desired, amount1Desired, token0FeeAmount, token1FeeAmount);
+        _minusFees(poolKey.token0, poolKey.token1, params.amount0Desired, params.amount1Desired, token0FeeAmount, token1FeeAmount);
+        params.amount0Desired -= token0FeeAmount;
+        params.amount1Desired -= token1FeeAmount;
         // Perform optimal swap after which the amounts desired are updated
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             poolKey,
             params.tickLower,
             params.tickUpper,
-            amount0Desired - token0FeeAmount,
-            amount1Desired - token1FeeAmount,
+            params.amount0Desired,
+            params.amount1Desired,
             swapData
         );
         // Create and initialize the pool if necessary.
@@ -623,20 +623,20 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         Position memory pos = _positions(params.tokenId);
         address token0 = pos.token0;
         address token1 = pos.token1;
-        uint256 amount0Desired = params.amount0Desired;
-        uint256 amount1Desired = params.amount1Desired;
         // Pull tokens
-        if (amount0Desired != 0) pay(token0, msg.sender, address(this), amount0Desired);
-        if (amount1Desired != 0) pay(token1, msg.sender, address(this), amount1Desired);
+        if (params.amount0Desired != 0) pay(token0, msg.sender, address(this), params.amount0Desired);
+        if (params.amount1Desired != 0) pay(token1, msg.sender, address(this), params.amount1Desired);
         // Collect zap-in fees before swap.
-        _minusFees(token0, token1, amount0Desired, amount1Desired, token0FeeAmount, token1FeeAmount);
+        _minusFees(token0, token1, params.amount0Desired, params.amount1Desired, token0FeeAmount, token1FeeAmount);
+        params.amount0Desired -= token0FeeAmount;
+        params.amount1Desired -= token1FeeAmount;
         // Perform optimal swap after which the amounts desired are updated
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             castPoolKey(pos),
             pos.tickLower,
             pos.tickUpper,
-            amount0Desired - token0FeeAmount,
-            amount1Desired - token1FeeAmount,
+            params.amount0Desired,
+            params.amount1Desired,
             swapData
         );
         (liquidity, amount0, amount1) = _increaseLiquidity(params, token0, token1);
