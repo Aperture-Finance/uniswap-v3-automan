@@ -5,5 +5,6 @@
     "feeLimitPips": 200000000000000000,
     "feeCollector": "0xbeef63AE5a2102506e8a352a5bB32aA8B30B3112"
   },
-  "controller": "0xbeef63AE5a2102506e8a352a5bB32aA8B30B3112"
+  "controller": "0xbeef63AE5a2102506e8a352a5bB32aA8B30B3112",
+  "optimalSwapRouter": "0x000000002c1732dCF01E5C9E057d3fD2A7f1c238"
 }
