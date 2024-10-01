@@ -585,15 +585,6 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         );
         params.amount0Desired -= token0FeeAmount;
         params.amount1Desired -= token1FeeAmount;
-        // Perform optimal swap after which the amounts desired are updated
-        (params.amount0Desired, params.amount1Desired) = _optimalSwap(
-            poolKey,
-            params.tickLower,
-            params.tickUpper,
-            params.amount0Desired,
-            params.amount1Desired,
-            swapData
-        );
         // Create and initialize the pool if necessary.
         if (sqrtPriceX96 != 0) {
             IPoolInitializer(address(npm)).createAndInitializePoolIfNecessary(
@@ -603,6 +594,15 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
                 sqrtPriceX96
             );
         }
+        // Perform optimal swap after which the amounts desired are updated
+        (params.amount0Desired, params.amount1Desired) = _optimalSwap(
+            poolKey,
+            params.tickLower,
+            params.tickUpper,
+            params.amount0Desired,
+            params.amount1Desired,
+            swapData
+        );
         (tokenId, liquidity, amount0, amount1) = _mint(params);
         emit Mint(tokenId);
     }
