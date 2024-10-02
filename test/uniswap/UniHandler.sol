@@ -135,8 +135,7 @@ contract UniHandler is UniBase {
                             amount1Min: 0,
                             recipient: recipient,
                             deadline: block.timestamp
-                        }),
-                        /* sqrtPriceX96= */ 0
+                        })
                     )
                 returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
                     tokenId = _tokenId;
@@ -205,8 +204,7 @@ contract UniHandler is UniBase {
                     }),
                     swapData,
                     /* token0FeeAmount= */ 0,
-                    /* token1FeeAmount= */ 0,
-                    /* sqrtPriceX96= */ 0
+                    /* token1FeeAmount= */ 0
                 )
             returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
                 tokenId = _tokenId;

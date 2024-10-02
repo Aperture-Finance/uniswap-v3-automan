@@ -175,8 +175,7 @@ contract UniV3AutomanTest is UniHandler {
                 }),
                 abi.encodePacked(npm),
                 /* token0FeeAmount= */ 0,
-                /* token1FeeAmount= */ 0,
-                /* sqrtPriceX96= */ 0
+                /* token1FeeAmount= */ 0
             );
         }
     }
@@ -279,8 +278,7 @@ contract UniV3AutomanTest is UniHandler {
                     amount1Min: 0,
                     recipient: address(this),
                     deadline: block.timestamp
-                }),
-                /* sqrtPriceX96= */ 0
+                })
             );
         }
     }
@@ -372,8 +370,7 @@ contract UniV3AutomanTest is UniHandler {
                 }),
                 new bytes(0),
                 /* token0FeeAmount= */ 0,
-                /* token1FeeAmount= */ 0,
-                /* sqrtPriceX96= */ 0
+                /* token1FeeAmount= */ 0
             );
         }
     }

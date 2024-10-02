@@ -545,19 +545,9 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
 
     /// @inheritdoc IAutomanUniV3MintRebalance
     function mint(
-        IUniV3NPM.MintParams memory params,
-        uint160 sqrtPriceX96
+        IUniV3NPM.MintParams memory params
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         pullAndApprove(params.token0, params.token1, params.amount0Desired, params.amount1Desired);
-        // Create and initialize the pool if necessary.
-        if (sqrtPriceX96 != 0) {
-            IPoolInitializer(address(npm)).createAndInitializePoolIfNecessary(
-                params.token0,
-                params.token1,
-                params.fee,
-                sqrtPriceX96
-            );
-        }
         (tokenId, liquidity, amount0, amount1) = _mint(params);
         emit Mint(tokenId);
     }
@@ -567,8 +557,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         IUniV3NPM.MintParams memory params,
         bytes calldata swapData,
         uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        uint160 sqrtPriceX96
+        uint256 token1FeeAmount
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         PoolKey memory poolKey = castPoolKey(params);
         // Pull tokens
@@ -585,15 +574,6 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         );
         params.amount0Desired -= token0FeeAmount;
         params.amount1Desired -= token1FeeAmount;
-        // Create and initialize the pool if necessary.
-        if (sqrtPriceX96 != 0) {
-            IPoolInitializer(address(npm)).createAndInitializePoolIfNecessary(
-                params.token0,
-                params.token1,
-                params.fee,
-                sqrtPriceX96
-            );
-        }
         // Perform optimal swap after which the amounts desired are updated
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             poolKey,
