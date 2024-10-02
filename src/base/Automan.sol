@@ -13,6 +13,7 @@ import {PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolKey.sol";
 import {SwapRouter} from "./SwapRouter.sol";
 import {IAutomanCommon, IAutomanUniV3MintRebalance} from "../interfaces/IAutoman.sol";
 import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "../libraries/OptimalSwap.sol";
+import {console} from "forge-std/console.sol";
 
 /// @title Automation manager for UniV3-like liquidity positions with built-in optimal swap algorithm
 /// @author Aperture Finance
@@ -570,11 +571,15 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         uint256 token1FeeAmount,
         uint160 sqrtPriceX96
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
+        console.log('tommyzhao 574');
         PoolKey memory poolKey = castPoolKey(params);
         // Pull tokens
+        console.log('tommyzhao 577');
         if (params.amount0Desired != 0) pay(poolKey.token0, msg.sender, address(this), params.amount0Desired);
+        console.log('tommyzhao 579');
         if (params.amount1Desired != 0) pay(poolKey.token1, msg.sender, address(this), params.amount1Desired);
         // Collect zap-in fees before swap.
+        console.log('tommyzhao 582');
         _minusFees(
             poolKey.token0,
             poolKey.token1,
@@ -586,25 +591,30 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         params.amount0Desired -= token0FeeAmount;
         params.amount1Desired -= token1FeeAmount;
         // Create and initialize the pool if necessary.
+        console.log('tommyzhao 594');
         if (sqrtPriceX96 != 0) {
+            console.log('tommyzhao 596');
             IPoolInitializer(address(npm)).createAndInitializePoolIfNecessary(
                 params.token0,
                 params.token1,
                 params.fee,
                 sqrtPriceX96
             );
+            console.log('tommyzhao 603');
         }
+        console.log('tommyzhao 605');
         // Perform optimal swap after which the amounts desired are updated
-        (params.amount0Desired, params.amount1Desired) = _optimalSwap(
-            poolKey,
-            params.tickLower,
-            params.tickUpper,
-            params.amount0Desired,
-            params.amount1Desired,
-            swapData
-        );
-        (tokenId, liquidity, amount0, amount1) = _mint(params);
-        emit Mint(tokenId);
+        // (params.amount0Desired, params.amount1Desired) = _optimalSwap(
+        //     poolKey,
+        //     params.tickLower,
+        //     params.tickUpper,
+        //     params.amount0Desired,
+        //     params.amount1Desired,
+        //     swapData
+        // );
+        console.log('tommyzhao 615');
+        // (tokenId, liquidity, amount0, amount1) = _mint(params);
+        // emit Mint(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon

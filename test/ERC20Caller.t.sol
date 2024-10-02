@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "forge-std/Test.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../src/libraries/ERC20Caller.sol";
+import {console} from "forge-std/console.sol";
 
 contract MockERC20 is ERC20 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol) {}
@@ -15,8 +16,12 @@ contract ERC20CallerTest is Test {
     MockERC20 internal testToken;
 
     function setUp() public {
-        vm.createSelectFork("mainnet", 17000000);
+        vm.chainId(4216138);
+        vm.createSelectFork("arbitrum_one", 259404457);  
+        // vm.createSelectFork("mainnet", 17000000);  arbitrum_one
         testToken = new MockERC20("TestToken", "TEST");
+        console.log('tommyzhao 123');
+        console.log(block.number);
     }
 
     function test_TotalSupply() public view {

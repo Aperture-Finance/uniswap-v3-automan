@@ -18,7 +18,7 @@ contract DeploySlipStreamAutoman is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31126953ca40d4c6ca0b940d0000;
+    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31126953ca40d4c6ca0b940d0003;
     bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112ebdfde3902472dbfc10c0000;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
@@ -90,7 +90,7 @@ contract DeploySlipStreamAutoman is Script {
             automan.setSwapRouters(swapRouters, statuses);
 
             // Transfer ownership to the owner
-            automan.transferOwnership(params.owner);
+            // automan.transferOwnership(params.owner);
 
             console2.log(
                 "SlipStreamAutoman deployed at: %s with owner %s and controller %s",

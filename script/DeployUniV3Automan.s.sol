@@ -18,7 +18,7 @@ contract DeployUniV3Automan is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b400009e78fae;
+    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b400009e78fa3;
     bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127dfc30de0987800003da9a65;
     bytes32 internal constant routerProxySalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112bc2281f12f80c0000280f6fd;
 
