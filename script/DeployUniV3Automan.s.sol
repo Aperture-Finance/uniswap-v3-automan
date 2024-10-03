@@ -80,9 +80,8 @@ contract DeployUniV3Automan is Script {
         initCodeHash = keccak256(initCode);
         console2.log("OptimalSwapRouter initCodeHash:");
         console2.logBytes32(initCodeHash);
-        UniV3OptimalSwapRouter optimalSwapRouter = UniV3OptimalSwapRouter(
-            payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash))
-        );
+        UniV3OptimalSwapRouter optimalSwapRouter =
+            UniV3OptimalSwapRouter(payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash)));
         if (address(optimalSwapRouter).code.length == 0) {
             // Deploy optimalSwapRouter
             create2deployer.deploy(0, optimalSwapSalt, initCode);
