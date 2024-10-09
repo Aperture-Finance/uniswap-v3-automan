@@ -1,0 +1,54 @@
+{
+  "transactions": [
+    {
+      "hash": "0xd3bc77d29692e555b5c74b7f21d08c854872b4545df1c9c2554bd89a00bdcb1a",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x000000bf0e089a0991bab3cd0e111213c71a5ad3",
+      "function": "setSwapRouters(address[],bool[])",
+      "arguments": [
+        "[0x000000000d44011EACAB39AB7965687d0bc2B16A]",
+        "[true]"
+      ],
+      "transaction": {
+        "from": "0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112",
+        "to": "0x000000bf0e089a0991bab3cd0e111213c71a5ad3",
+        "gas": "0xfd420dfbd",
+        "value": "0x0",
+        "input": "0xf3e17b87000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000d44011eacab39ab7965687d0bc2b16a00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+        "nonce": "0x74",
+        "chainId": "0xa9"
+      },
+      "additionalContracts": [],
+      "isFixedGasLimit": false
+    },
+    {
+      "hash": "0x494607c44ce7d8836bfea7d51f32fe123671581f95cecc368db976bcecbfc98f",
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x000000bf0e089a0991bab3cd0e111213c71a5ad3",
+      "function": "transferOwnership(address)",
+      "arguments": [
+        "0x52e698E093CC1f480A77896a71A7C017F70A4033"
+      ],
+      "transaction": {
+        "from": "0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112",
+        "to": "0x000000bf0e089a0991bab3cd0e111213c71a5ad3",
+        "gas": "0xa521",
+        "value": "0x0",
+        "input": "0xf2fde38b00000000000000000000000052e698e093cc1f480a77896a71a7c017f70a4033",
+        "nonce": "0x75",
+        "chainId": "0xa9"
+      },
+      "additionalContracts": [],
+      "isFixedGasLimit": false
+    }
+  ],
+  "receipts": [],
+  "libraries": [],
+  "pending": [],
+  "returns": {},
+  "timestamp": 1728514074,
+  "chain": 169,
+  "commit": "3d83cad"
+}

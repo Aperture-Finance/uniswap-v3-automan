@@ -46,5 +46,6 @@ base = "${BASE_RPC_URL}"
 bnb = "https://bsc-dataseed1.defibit.io"
 avalanche = "https://avalanche.public-rpc.com"
 scroll = "${SCROLL_RPC_URL}"
+manta = "https://1rpc.io/manta"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
