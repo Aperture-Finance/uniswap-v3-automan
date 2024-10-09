@@ -1,0 +1,54 @@
+{
+  "transactions": [
+    {
+      "hash": null,
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x00000027bc53f021f3564180f347425edaa20883",
+      "function": "setSwapRouters(address[],bool[])",
+      "arguments": [
+        "[0x00000000Ff5c300B992ae04D59a799AA4fbA1dC8]",
+        "[true]"
+      ],
+      "transaction": {
+        "from": "0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112",
+        "to": "0x00000027bc53f021f3564180f347425edaa20883",
+        "gas": "0x283934201",
+        "value": "0x0",
+        "input": "0xf3e17b8700000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000ff5c300b992ae04d59a799aa4fba1dc800000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001",
+        "nonce": "0xb",
+        "chainId": "0x82750"
+      },
+      "additionalContracts": [],
+      "isFixedGasLimit": false
+    },
+    {
+      "hash": null,
+      "transactionType": "CALL",
+      "contractName": null,
+      "contractAddress": "0x00000027bc53f021f3564180f347425edaa20883",
+      "function": "transferOwnership(address)",
+      "arguments": [
+        "0xaF327bb0AF7c282FD75ee72651f4E78D4349d517"
+      ],
+      "transaction": {
+        "from": "0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112",
+        "to": "0x00000027bc53f021f3564180f347425edaa20883",
+        "gas": "0xa521",
+        "value": "0x0",
+        "input": "0xf2fde38b000000000000000000000000af327bb0af7c282fd75ee72651f4e78d4349d517",
+        "nonce": "0xc",
+        "chainId": "0x82750"
+      },
+      "additionalContracts": [],
+      "isFixedGasLimit": false
+    }
+  ],
+  "receipts": [],
+  "libraries": [],
+  "pending": [],
+  "returns": {},
+  "timestamp": 1728427366,
+  "chain": 534352,
+  "commit": "bc739ac"
+}

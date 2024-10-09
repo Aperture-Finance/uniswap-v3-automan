@@ -18,7 +18,7 @@ contract DeploySlipStreamAutoman is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31126953ca40d4c6ca0b940d0000;
+    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112efe83ae4286e4a037c0300a0;
     bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112ebdfde3902472dbfc10c0000;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
@@ -80,10 +80,10 @@ contract DeploySlipStreamAutoman is Script {
 
             // Set up automan
             automan.setFeeConfig(params.feeConfig);
-            address[] memory controllers = new address[](1);
-            controllers[0] = params.controller;
             bool[] memory statuses = new bool[](1);
             statuses[0] = true;
+            address[] memory controllers = new address[](1);
+            controllers[0] = params.controller;
             automan.setControllers(controllers, statuses);
             address[] memory swapRouters = new address[](1);
             swapRouters[0] = params.optimalSwapRouter;

@@ -18,7 +18,7 @@ contract DeployPCSV3Automan is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112aea04f28065924aabf21000c;
+    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112937ffc598f42ff97f2080080;
     bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31128393bd6e0c8355c768030028;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
@@ -80,10 +80,10 @@ contract DeployPCSV3Automan is Script {
 
             // Set up automan
             automan.setFeeConfig(params.feeConfig);
-            address[] memory controllers = new address[](1);
-            controllers[0] = params.controller;
             bool[] memory statuses = new bool[](1);
             statuses[0] = true;
+            address[] memory controllers = new address[](1);
+            controllers[0] = params.controller;
             automan.setControllers(controllers, statuses);
             address[] memory swapRouters = new address[](1);
             swapRouters[0] = params.optimalSwapRouter;
