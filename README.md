@@ -62,8 +62,7 @@ the IR pipeline. For faster compilation and testing, the lite profile can be ena
 variable `FOUNDRY_PROFILE` to `lite` which shortens the compilation time to about 10 seconds.
 
 ```shell
-FOUNDRY_PROFILE="lite"
-forge test
+FOUNDRY_PROFILE=lite forge test
 ```
 
 The tests may take anywhere between seconds to minutes to complete depending on whether contract storage slots in scope

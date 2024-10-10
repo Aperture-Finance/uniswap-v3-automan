@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// FOUNDRY_PROFILE=lite forge test --watch --match-contract=Automan -vvvvv
 pragma solidity ^0.8.0;
 
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -153,7 +154,9 @@ contract UniV3AutomanTest is UniHandler {
                     deadline: block.timestamp,
                     sqrtPriceX96: 0
                 }),
-                abi.encodePacked(npm)
+                abi.encodePacked(npm),
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0
             );
         } else {
             IAutomanUniV3MintRebalance(address(automan)).mintOptimal(
@@ -170,7 +173,9 @@ contract UniV3AutomanTest is UniHandler {
                     recipient: address(this),
                     deadline: block.timestamp
                 }),
-                abi.encodePacked(npm)
+                abi.encodePacked(npm),
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0
             );
         }
     }
@@ -184,30 +189,31 @@ contract UniV3AutomanTest is UniHandler {
         assertTrue(!automan.isController(user));
         vm.startPrank(user);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _decreaseLiquidity(tokenId, 1, 0);
+        _decreaseLiquidity(tokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _decreaseLiquiditySingle(tokenId, 1, true, 0);
+        _decreaseLiquiditySingle(tokenId, 1, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _removeLiquidity(tokenId, 0);
+        _removeLiquidity(tokenId, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _removeLiquiditySingle(tokenId, true, 0);
+        _removeLiquiditySingle(tokenId, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _reinvest(tokenId, 1e12);
+        _reinvest(tokenId, /* token0FeeAmount= */ 1e12, /* token1FeeAmount= */ 1e12);
         (tickLower, tickUpper) = prepTicks(0, 100);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _rebalance(tokenId, tickLower, tickUpper, 1e12);
+        _rebalance(tokenId, tickLower, tickUpper, /* token0FeeAmount= */ 1e12, /* token1FeeAmount= */ 1e12);
     }
 
     /// @dev Should revert if the fee is greater than the limit
-    function testRevert_FeeLimitExceeded() public {
+    function testRevert_FeeLimitExceeded() public virtual {
+        npm.approve(address(automan), thisTokenId);
         vm.expectRevert(IAutomanCommon.FeeLimitExceeded.selector);
-        _decreaseLiquidity(thisTokenId, 1, 1e17);
+        _decreaseLiquidity(thisTokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 1000);
     }
 
     /// @dev Decreasing liquidity without prior approval should fail
     function testRevert_NotApproved() public virtual {
         vm.expectRevert("Not approved");
-        _decreaseLiquidity(thisTokenId, 1, 0);
+        _decreaseLiquidity(thisTokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
     }
 
     /************************************************
@@ -343,7 +349,9 @@ contract UniV3AutomanTest is UniHandler {
                     deadline: block.timestamp,
                     sqrtPriceX96: 0
                 }),
-                new bytes(0)
+                new bytes(0),
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0
             );
         } else {
             IAutomanUniV3MintRebalance(address(automan)).mintOptimal(
@@ -360,7 +368,9 @@ contract UniV3AutomanTest is UniHandler {
                     recipient: address(this),
                     deadline: block.timestamp
                 }),
-                new bytes(0)
+                new bytes(0),
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0
             );
         }
     }
@@ -412,7 +422,12 @@ contract UniV3AutomanTest is UniHandler {
         uint256 balance1Before = balanceOf(token1, address(this));
         // Approve automan to decrease liquidity
         npm.setApprovalForAll(address(automan), true);
-        (uint256 amount0, uint256 amount1) = _decreaseLiquidity(tokenId, liquidityDesired, 0);
+        (uint256 amount0, uint256 amount1) = _decreaseLiquidity(
+            tokenId,
+            liquidityDesired,
+            /* token0FeeAmount= */ 0,
+            /* token1FeeAmount= */ 0
+        );
         assertBalanceMatch(address(this), balance0Before, balance1Before, amount0, amount1, true);
     }
 
@@ -421,7 +436,7 @@ contract UniV3AutomanTest is UniHandler {
         uint256 tokenId = thisTokenId;
         npm.approve(address(automan), tokenId);
         vm.expectRevert(IAutomanCommon.InsufficientAmount.selector);
-        _decreaseLiquidity(tokenId, 10, 1e16);
+        _decreaseLiquidity(tokenId, 10, /* token0FeeAmount= */ 1e16, /* token1FeeAmount= */ 1e16);
     }
 
     /// @dev Decreasing liquidity with permit
@@ -433,7 +448,8 @@ contract UniV3AutomanTest is UniHandler {
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
         automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
-            0,
+            /* token0FeeAmount= */ 0,
+            /* token1FeeAmount= */ 0,
             deadline,
             v,
             r,
@@ -449,7 +465,13 @@ contract UniV3AutomanTest is UniHandler {
         uint256 balanceBefore = zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this));
         // Approve automan to decrease liquidity
         npm.approve(address(automan), tokenId);
-        uint256 amount = _decreaseLiquiditySingle(tokenId, liquidityDesired, zeroForOne, 0);
+        uint256 amount = _decreaseLiquiditySingle(
+            tokenId,
+            liquidityDesired,
+            zeroForOne,
+            /* token0FeeAmount= */ 0,
+            /* token1FeeAmount= */ 0
+        );
         assertEq(
             zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this)),
             balanceBefore + amount,
@@ -467,7 +489,8 @@ contract UniV3AutomanTest is UniHandler {
         automan.decreaseLiquiditySingle(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
             zeroForOne,
-            0,
+            /* token0FeeAmount= */ 0,
+            /* token1FeeAmount= */ 0,
             new bytes(0),
             deadline,
             v,
@@ -484,11 +507,15 @@ contract UniV3AutomanTest is UniHandler {
         // Approve automan to remove liquidity
         npm.approve(address(automan), tokenId);
         uint256 gasBefore = gasleft();
-        (uint256 amount0, uint256 amount1) = _removeLiquidity(tokenId, 1e16);
+        (uint256 amount0, uint256 amount1) = _removeLiquidity(
+            tokenId,
+            /* token0FeeAmount= */ 123,
+            /* token1FeeAmount= */ 456
+        );
         console2.log("gas used", gasBefore - gasleft());
         assertBalanceMatch(address(this), balance0Before, balance1Before, amount0, amount1, true);
-        assertGt(balanceOf(token0, collector), 0, "!fee");
-        assertGt(balanceOf(token1, collector), 0, "!fee");
+        assertEq(balanceOf(token0, collector), 123, "!fee");
+        assertEq(balanceOf(token1, collector), 456, "!fee");
     }
 
     /// @dev Test removing liquidity from a v3 LP position with permit
@@ -507,7 +534,8 @@ contract UniV3AutomanTest is UniHandler {
                 amount1Min: 0,
                 deadline: deadline
             }),
-            0,
+            /* token0FeeAmount= */ 0,
+            /* token1FeeAmount= */ 0,
             deadline,
             v,
             r,
@@ -523,13 +551,19 @@ contract UniV3AutomanTest is UniHandler {
         uint256 balanceBefore = zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this));
         // Approve automan to remove liquidity
         npm.approve(address(automan), tokenId);
-        uint256 amount = _removeLiquiditySingle(tokenId, zeroForOne, 1e16);
+        uint256 amount = _removeLiquiditySingle(
+            tokenId,
+            zeroForOne,
+            /* token0FeeAmount= */ 123,
+            /* token1FeeAmount= */ 456
+        );
         assertEq(
             zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this)),
             balanceBefore + amount,
             "amount mismatch"
         );
-        assertGt(zeroForOne ? balanceOf(token1, collector) : balanceOf(token0, collector), 0, "!fee");
+        assertEq(balanceOf(token0, collector), 123, "!fee");
+        assertEq(balanceOf(token1, collector), 456, "!fee");
     }
 
     /// @dev Test removing liquidity from a v3 LP position and withdrawing a single token with permit
@@ -546,7 +580,8 @@ contract UniV3AutomanTest is UniHandler {
                 deadline: deadline
             }),
             zeroForOne,
-            0,
+            /* token0FeeAmount= */ 0,
+            /* token1FeeAmount= */ 0,
             new bytes(0),
             deadline,
             v,
@@ -562,33 +597,36 @@ contract UniV3AutomanTest is UniHandler {
         vm.prank(user);
         npm.approve(address(automan), tokenId);
         uint256 gasBefore = gasleft();
-        uint128 liquidity = _reinvest(tokenId, 1e12);
+        uint128 liquidity = _reinvest(tokenId, /* token0FeeAmount= */ 123, /* token1FeeAmount= */ 456);
         console2.log("gas used", gasBefore - gasleft());
         assertGt(liquidity, 0, "liquidity must increase");
-        assertGt(balanceOf(token0, collector), 0, "!fee");
-        assertGt(balanceOf(token1, collector), 0, "!fee");
+        assertEq(balanceOf(token0, collector), 123, "!fee");
+        assertEq(balanceOf(token1, collector), 456, "!fee");
         invariantZeroBalance();
     }
 
     /// @dev Test reinvesting a v3 LP position
     function testFuzz_Reinvest(uint256 amountIn, bool zeroForOne) public {
+        amountIn = amountIn < 1e9 ? 1e9 : amountIn; // Set amountIn large enough to collect 1 of token0 and 2 of token1
         uint256 tokenId = userTokenId;
         swapBackAndForth(amountIn, zeroForOne);
         vm.prank(user);
         npm.approve(address(automan), tokenId);
-        uint128 liquidity = _reinvest(tokenId, 1e9);
+        uint128 liquidity = _reinvest(tokenId, /* token0FeeAmount= */ 1, /* token1FeeAmount= */ 2);
         assertGt(liquidity, 0, "liquidity must increase");
-        assertTrue(balanceOf(token0, collector) > 0 || balanceOf(token1, collector) > 0, "!fee");
+        assertEq(balanceOf(token0, collector), 1, "!fee");
+        assertEq(balanceOf(token1, collector), 2, "!fee");
         invariantZeroBalance();
     }
 
     /// @dev Test reinvesting a v3 LP position with permit
     function testFuzz_Reinvest_WithPermit(uint256 amountIn, bool zeroForOne) public {
+        amountIn = amountIn < 1e9 ? 1e9 : amountIn; // Set amountIn large enough to collect 1 of token0 and 2 of token1
         uint256 tokenId = userTokenId;
         swapBackAndForth(amountIn, zeroForOne);
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
-        _reinvest(tokenId, 1e9, deadline, v, r, s);
+        _reinvest(tokenId, /* token0FeeAmount= */ 1, /* token1FeeAmount= */ 2, deadline, v, r, s);
     }
 
     /// @dev Test rebalancing a v3 LP position
@@ -618,14 +656,15 @@ contract UniV3AutomanTest is UniHandler {
                         sqrtPriceX96: 0
                     }),
                     thisTokenId,
-                    1e12,
+                    /* token0FeeAmount= */ 123,
+                    /* token1FeeAmount= */ 456,
                     new bytes(0)
                 )
             returns (uint256 newTokenId, uint128 liquidity, uint256, uint256) {
                 assertEq(npm.ownerOf(newTokenId), address(this), "owner mismatch");
                 assertGt(liquidity, 0, "liquidity cannot be zero");
-                assertGt(balanceOf(token0, collector), 0, "!fee");
-                assertGt(balanceOf(token1, collector), 0, "!fee");
+                assertEq(balanceOf(token0, collector), 123, "!fee");
+                assertEq(balanceOf(token1, collector), 456, "!fee");
                 invariantZeroBalance();
             } catch Error(string memory reason) {
                 assertEq(reason, "LO", "only catch liquidity overflow");
@@ -647,14 +686,15 @@ contract UniV3AutomanTest is UniHandler {
                         deadline: block.timestamp
                     }),
                     thisTokenId,
-                    1e12,
+                    /* token0FeeAmount= */ 123,
+                    /* token1FeeAmount= */ 456,
                     new bytes(0)
                 )
             returns (uint256 newTokenId, uint128 liquidity, uint256, uint256) {
                 assertEq(npm.ownerOf(newTokenId), address(this), "owner mismatch");
                 assertGt(liquidity, 0, "liquidity cannot be zero");
-                assertGt(balanceOf(token0, collector), 0, "!fee");
-                assertGt(balanceOf(token1, collector), 0, "!fee");
+                assertEq(balanceOf(token0, collector), 123, "!fee");
+                assertEq(balanceOf(token1, collector), 456, "!fee");
                 invariantZeroBalance();
             } catch Error(string memory reason) {
                 assertEq(reason, "LO", "only catch liquidity overflow");
@@ -691,7 +731,8 @@ contract UniV3AutomanTest is UniHandler {
                         sqrtPriceX96: 0
                     }),
                     tokenId,
-                    1e12,
+                    /* token0FeeAmount= */ 123,
+                    /* token1FeeAmount= */ 456,
                     new bytes(0),
                     deadline,
                     v,
@@ -718,7 +759,8 @@ contract UniV3AutomanTest is UniHandler {
                         deadline: deadline
                     }),
                     tokenId,
-                    1e12,
+                    /* token0FeeAmount= */ 123,
+                    /* token1FeeAmount= */ 456,
                     new bytes(0),
                     deadline,
                     v,
@@ -754,6 +796,13 @@ contract SlipStreamAutomanTest is UniV3AutomanTest {
     /// @dev SlipStream does not revert with "Not approved" but with no data.
     function testRevert_NotApproved() public override {
         vm.expectRevert(bytes(""));
-        _decreaseLiquidity(thisTokenId, 1, 0);
+        _decreaseLiquidity(thisTokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+    }
+
+    /// @dev The position on Slipstream has a different amount of collectable tokens.
+    function testRevert_FeeLimitExceeded() public override {
+        npm.approve(address(automan), thisTokenId);
+        vm.expectRevert(IAutomanCommon.FeeLimitExceeded.selector);
+        _decreaseLiquidity(thisTokenId, 1, /* token0FeeAmount= */ 5000, /* token1FeeAmount= */ 0);
     }
 }

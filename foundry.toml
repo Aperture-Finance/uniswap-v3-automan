@@ -41,7 +41,11 @@ runs = 16
 mainnet = "${MAINNET_RPC_URL}"
 arbitrum_one = "${ARBITRUM_RPC_URL}"
 optimism = "${OPTIMISM_RPC_URL}"
+polygon = "https://polygon-rpc.com"
 base = "${BASE_RPC_URL}"
-scroll = "https://rpc.scroll.io"
+bnb = "https://bsc-dataseed1.defibit.io"
+avalanche = "https://avalanche.public-rpc.com"
+scroll = "${SCROLL_RPC_URL}"
+manta = "https://1rpc.io/manta"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

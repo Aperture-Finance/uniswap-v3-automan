@@ -8,15 +8,22 @@ import {UniV3Automan} from "../src/UniV3Automan.sol";
 
 contract DeployUniV3Automan is Script {
     struct DeployParams {
+        // Has to be alphabetically ordered per https://book.getfoundry.sh/cheatcodes/parse-json
         address controller;
         UniV3Automan.FeeConfig feeConfig;
         INPM npm;
+        address optimalSwapRouter; // Deploy optimal swap router if parsed as address(0).
         address owner;
     }
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b400009e78fae;
+    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112e429609defd54e2600050000; // mainnet, arbitrum_one, optimism, and polygon
+    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31126da13df7e082a0874b020028; // base
+    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112350766a71aff01bd0a000040; // bnb
+    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31129e5100c6f38046891d010080; // avalanche
+    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127d2397bf1d3d45097b00002c; // scroll
+    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b311279cd7418ade4641cb50000e0; // manta
     bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127dfc30de0987800003da9a65;
     bytes32 internal constant routerProxySalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112bc2281f12f80c0000280f6fd;
 
@@ -44,11 +51,30 @@ contract DeployUniV3Automan is Script {
         console.log("Deploying automan with params: %s", json);
         DeployParams memory params = abi.decode(vm.parseJson(json), (DeployParams));
 
+        // Conditionally deploy optimalSwapRouter.
+        bytes memory initCode;
+        bytes32 initCodeHash;
+        if (params.optimalSwapRouter == address(0)) {
+            initCode = bytes.concat(type(UniV3OptimalSwapRouter).creationCode, abi.encode(params.npm));
+            initCodeHash = keccak256(initCode);
+            console2.log("OptimalSwapRouter initCodeHash:");
+            console2.logBytes32(initCodeHash);
+            UniV3OptimalSwapRouter optimalSwapRouter = UniV3OptimalSwapRouter(
+                payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash))
+            );
+            if (address(optimalSwapRouter).code.length == 0) {
+                // Deploy optimalSwapRouter
+                create2deployer.deploy(0, optimalSwapSalt, initCode);
+                console2.log("UniV3OptimalSwapRouter deployed at: %s", address(optimalSwapRouter));
+            }
+            params.optimalSwapRouter = address(optimalSwapRouter);
+        }
+
         // Encode constructor arguments
         bytes memory encodedArguments = abi.encode(params.npm, msgSender);
         // Concatenate init code with encoded arguments
-        bytes memory initCode = bytes.concat(type(UniV3Automan).creationCode, encodedArguments);
-        bytes32 initCodeHash = keccak256(initCode);
+        initCode = bytes.concat(type(UniV3Automan).creationCode, encodedArguments);
+        initCodeHash = keccak256(initCode);
         console2.log("UniV3Automan initCodeHash:");
         console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
@@ -60,11 +86,15 @@ contract DeployUniV3Automan is Script {
 
             // Set up automan
             automan.setFeeConfig(params.feeConfig);
-            address[] memory controllers = new address[](1);
-            controllers[0] = params.controller;
             bool[] memory statuses = new bool[](1);
             statuses[0] = true;
+            address[] memory controllers = new address[](1);
+            controllers[0] = params.controller;
             automan.setControllers(controllers, statuses);
+            address[] memory swapRouters = new address[](1);
+            swapRouters[0] = params.optimalSwapRouter;
+            automan.setSwapRouters(swapRouters, statuses);
+
             // Transfer ownership to the owner
             automan.transferOwnership(params.owner);
 
@@ -74,19 +104,6 @@ contract DeployUniV3Automan is Script {
                 automan.owner(),
                 address(params.controller)
             );
-        }
-
-        initCode = bytes.concat(type(UniV3OptimalSwapRouter).creationCode, abi.encode(params.npm));
-        initCodeHash = keccak256(initCode);
-        console2.log("OptimalSwapRouter initCodeHash:");
-        console2.logBytes32(initCodeHash);
-        UniV3OptimalSwapRouter optimalSwapRouter = UniV3OptimalSwapRouter(
-            payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash))
-        );
-        if (address(optimalSwapRouter).code.length == 0) {
-            // Deploy optimalSwapRouter
-            create2deployer.deploy(0, optimalSwapSalt, initCode);
-            console2.log("UniV3OptimalSwapRouter deployed at: %s", address(optimalSwapRouter));
         }
 
         // Deployment completed.

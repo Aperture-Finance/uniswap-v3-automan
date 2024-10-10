@@ -5,6 +5,7 @@ import "solady/src/utils/SafeTransferLib.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/IPoolInitializer.sol";
 import {ICommonNonfungiblePositionManager as INPM, IUniswapV3NonfungiblePositionManager as IUniV3NPM} from "@aperture_finance/uni-v3-lib/src/interfaces/IUniswapV3NonfungiblePositionManager.sol";
 import {LiquidityAmounts} from "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import {NPMCaller, Position} from "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
@@ -44,8 +45,12 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     }
 
     /// @dev Reverts if the fee is greater than the limit
-    function checkFeeSanity(uint256 feePips) internal view {
-        if (feePips > feeConfig.feeLimitPips) revert FeeLimitExceeded();
+    function checkFeeSanity(uint256 feeAmount, uint256 collectableAmount) internal view {
+        if (collectableAmount < feeAmount) revert InsufficientAmount();
+        if (collectableAmount != 0) {
+            uint256 feePips = feeAmount.mulDiv(MAX_FEE_PIPS, collectableAmount);
+            if (feePips > feeConfig.feeLimitPips) revert FeeLimitExceeded();
+        }
     }
 
     /// @dev Reverts if the router is not whitelisted
@@ -257,7 +262,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         }
     }
 
-    /// @dev Internal increase liquidity abstraction
+    /// @dev Internal increase liquidity abstraction, tokens already in correct ratio.
     function _increaseLiquidity(
         INPM.IncreaseLiquidityParams memory params,
         address token0,
@@ -279,89 +284,67 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         }
     }
 
-    /// @dev Collect the tokens owed, deduct transaction fees in both tokens and send it to the fee collector
-    /// @param amount0Principal The principal amount of token0 used to calculate the fee
-    /// @param amount1Principal The principal amount of token1 used to calculate the fee
+    /// @dev Internal collect gas and aperture fees abstraction
+    /// @param token0 The address of token0
+    /// @param token1 The address of token1
+    /// @param token0DeductibleAmount The amount of token0 collected or zapped in that can deduct fees
+    /// @param token1DeductibleAmount The amount of token1 collected or zapped in that can deduct fees
+    /// @param token0FeeAmount The amount of token0 fees to be deducted
+    /// @param token1FeeAmount The amount of token1 fees to be deducted
+    /// @return token0DeductibleAmount The amount of token0 after deducting fees
+    /// @return token1DeductibleAmount The amount of token1 after deducting fees
+    function _deductFees(
+        address token0,
+        address token1,
+        uint256 token0DeductibleAmount,
+        uint256 token1DeductibleAmount,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
+    ) private returns (uint256, uint256) {
+        // Calculations outside mulDiv won't overflow.
+        unchecked {
+            checkFeeSanity(token0FeeAmount, token0DeductibleAmount);
+            checkFeeSanity(token1FeeAmount, token1DeductibleAmount);
+            address _feeCollector = feeConfig.feeCollector;
+            if (token0FeeAmount != 0) {
+                token0DeductibleAmount -= token0FeeAmount;
+                refund(token0, _feeCollector, token0FeeAmount);
+            }
+            if (token1FeeAmount != 0) {
+                token1DeductibleAmount -= token1FeeAmount;
+                refund(token1, _feeCollector, token1FeeAmount);
+            }
+        }
+        return (token0DeductibleAmount, token1DeductibleAmount);
+    }
+
+    /// @dev Collect the tokens owed, deduct gas and aperture fees and send it to the fee collector
     /// @return amount0 The amount of token0 after fees
     /// @return amount1 The amount of token1 after fees
-    function _collectMinusFees(
+    function _collectDeductFees(
         uint256 tokenId,
         address token0,
         address token1,
-        uint256 amount0Principal,
-        uint256 amount1Principal,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) private returns (uint256, uint256) {
-        // Collect the tokens owed then deduct transaction fees
+        // Collect the fees collected from providing liquidity.
         (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId);
-        // Calculations outside mulDiv won't overflow.
-        unchecked {
-            uint256 fee0 = amount0Principal.mulDiv(feePips, MAX_FEE_PIPS);
-            uint256 fee1 = amount1Principal.mulDiv(feePips, MAX_FEE_PIPS);
-            if (amount0Collected < fee0 || amount1Collected < fee1) revert InsufficientAmount();
-            address _feeCollector = feeConfig.feeCollector;
-            if (fee0 != 0) {
-                amount0Collected -= fee0;
-                refund(token0, _feeCollector, fee0);
-            }
-            if (fee1 != 0) {
-                amount1Collected -= fee1;
-                refund(token1, _feeCollector, fee1);
-            }
-        }
-        return (amount0Collected, amount1Collected);
-    }
-
-    /// @dev Collect the tokens owed, deduct transaction fees in both tokens and send it to the fee collector
-    /// @param amount0Delta The change in token0 used to calculate the fee
-    /// @param amount1Delta The change in token1 used to calculate the fee
-    /// @param liquidityDelta The change in liquidity used to calculate the principal
-    /// @return amount0 The amount of token0 after fees
-    /// @return amount1 The amount of token1 after fees
-    function _collectMinusFees(
-        Position memory pos,
-        uint256 tokenId,
-        uint256 amount0Delta,
-        uint256 amount1Delta,
-        uint128 liquidityDelta,
-        uint256 feePips
-    ) private returns (uint256, uint256) {
-        (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId);
-        // Calculations outside mulDiv won't overflow.
-        unchecked {
-            uint256 fee0;
-            uint256 fee1;
-            {
-                uint256 numerator = feePips * pos.liquidity;
-                uint256 denominator = MAX_FEE_PIPS * liquidityDelta;
-                fee0 = amount0Delta.mulDiv(numerator, denominator);
-                fee1 = amount1Delta.mulDiv(numerator, denominator);
-            }
-            if (amount0Collected < fee0 || amount1Collected < fee1) revert InsufficientAmount();
-            address _feeCollector = feeConfig.feeCollector;
-            if (fee0 != 0) {
-                amount0Collected -= fee0;
-                refund(pos.token0, _feeCollector, fee0);
-            }
-            if (fee1 != 0) {
-                amount1Collected -= fee1;
-                refund(pos.token1, _feeCollector, fee1);
-            }
-        }
-        return (amount0Collected, amount1Collected);
+        return _deductFees(token0, token1, amount0Collected, amount1Collected, token0FeeAmount, token1FeeAmount);
     }
 
     /// @dev Internal decrease liquidity abstraction
     function _decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) private returns (uint256 amount0, uint256 amount1) {
         uint256 tokenId = params.tokenId;
         Position memory pos = _positions(tokenId);
         // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
-        (uint256 amount0Delta, uint256 amount1Delta) = NPMCaller.decreaseLiquidity(npm, params);
-        // Collect the tokens owed and deduct transaction fees
-        (amount0, amount1) = _collectMinusFees(pos, tokenId, amount0Delta, amount1Delta, params.liquidity, feePips);
+        NPMCaller.decreaseLiquidity(npm, params);
+        // Collect the tokens owed and deduct gas and aperture fees.
+        (amount0, amount1) = _collectDeductFees(tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
         // Send the remaining amounts to the position owner
         address owner = NPMCaller.ownerOf(npm, tokenId);
         if (amount0 != 0) refund(pos.token0, owner, amount0);
@@ -373,7 +356,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         INPM.DecreaseLiquidityParams memory params,
         Position memory pos,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) private returns (uint256 amount) {
         uint256 amountMin;
@@ -385,17 +369,15 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             amountMin = params.amount0Min;
             params.amount0Min = 0;
         }
-        // Reuse the `amount0Min` and `amount1Min` fields to avoid stack too deep error
-        (params.amount0Min, params.amount1Min) = NPMCaller.decreaseLiquidity(npm, params);
+        NPMCaller.decreaseLiquidity(npm, params);
+        // Collect the tokens owed and deduct gas and aperture fees.
         uint256 tokenId = params.tokenId;
-        // Collect the tokens owed and deduct transaction fees
-        (uint256 amount0, uint256 amount1) = _collectMinusFees(
-            pos,
+        (uint256 amount0, uint256 amount1) = _collectDeductFees(
             tokenId,
-            params.amount0Min,
-            params.amount1Min,
-            params.liquidity,
-            feePips
+            pos.token0,
+            pos.token1,
+            token0FeeAmount,
+            token1FeeAmount
         );
         // Swap to the desired token and send it to the position owner
         // It is assumed that the swap is `exactIn` and all of the input tokens are consumed.
@@ -415,17 +397,19 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function _decreaseLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) private returns (uint256 amount) {
         Position memory pos = _positions(params.tokenId);
-        amount = _decreaseCollectSingle(params, pos, zeroForOne, feePips, swapData);
+        amount = _decreaseCollectSingle(params, pos, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
     }
 
-    /// @dev Internal function to remove liquidity and collect tokens to this contract minus fees
+    /// @dev Internal function to remove liquidity, collect tokens to this contract, and deduct fees
     function _removeAndCollect(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) private returns (address token0, address token1, uint256 amount0, uint256 amount1) {
         uint256 tokenId = params.tokenId;
         Position memory pos = _positions(tokenId);
@@ -433,18 +417,23 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         token1 = pos.token1;
         // Update `params.liquidity` to the current liquidity
         params.liquidity = pos.liquidity;
-        (uint256 amount0Principal, uint256 amount1Principal) = NPMCaller.decreaseLiquidity(npm, params);
-        // Collect the tokens owed and deduct transaction fees
-        (amount0, amount1) = _collectMinusFees(tokenId, token0, token1, amount0Principal, amount1Principal, feePips);
+        NPMCaller.decreaseLiquidity(npm, params);
+        // Collect the tokens owed and deduct gas and aperture fees
+        (amount0, amount1) = _collectDeductFees(tokenId, token0, token1, token0FeeAmount, token1FeeAmount);
     }
 
     /// @dev Internal remove liquidity abstraction
     function _removeLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) private returns (uint256, uint256) {
         uint256 tokenId = params.tokenId;
-        (address token0, address token1, uint256 amount0, uint256 amount1) = _removeAndCollect(params, feePips);
+        (address token0, address token1, uint256 amount0, uint256 amount1) = _removeAndCollect(
+            params,
+            token0FeeAmount,
+            token1FeeAmount
+        );
         address owner = NPMCaller.ownerOf(npm, tokenId);
         if (amount0 != 0) refund(token0, owner, amount0);
         if (amount1 != 0) refund(token1, owner, amount1);
@@ -456,21 +445,23 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function _removeLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) private returns (uint256 amount) {
         uint256 tokenId = params.tokenId;
         Position memory pos = _positions(tokenId);
         // Update `params.liquidity` to the current liquidity
         params.liquidity = pos.liquidity;
-        amount = _decreaseCollectSingle(params, pos, zeroForOne, feePips, swapData);
+        amount = _decreaseCollectSingle(params, pos, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
         _burn(tokenId);
     }
 
     /// @dev Internal reinvest abstraction
     function _reinvest(
         INPM.IncreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) private returns (uint128, uint256, uint256) {
         Position memory pos = _positions(params.tokenId);
@@ -480,15 +471,21 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         {
             // Calculate the principal amounts
             (uint160 sqrtPriceX96, ) = V3PoolCallee.wrap(computeAddressSorted(poolKey)).sqrtPriceX96AndTick();
-            (amount0, amount1) = LiquidityAmounts.getAmountsForLiquidity(
+            LiquidityAmounts.getAmountsForLiquidity(
                 sqrtPriceX96,
                 pos.tickLower.getSqrtRatioAtTick(),
                 pos.tickUpper.getSqrtRatioAtTick(),
                 pos.liquidity
             );
         }
-        // Collect the tokens owed then deduct transaction fees
-        (amount0, amount1) = _collectMinusFees(params.tokenId, pos.token0, pos.token1, amount0, amount1, feePips);
+        // Collect the tokens owed then deduct gas and aperture fees
+        (amount0, amount1) = _collectDeductFees(
+            params.tokenId,
+            pos.token0,
+            pos.token1,
+            token0FeeAmount,
+            token1FeeAmount
+        );
         // Perform optimal swap and update `params`
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             poolKey,
@@ -505,7 +502,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function _rebalance(
         IUniV3NPM.MintParams memory params,
         uint256 tokenId,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) private returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         // Remove liquidity and collect the tokens owed
@@ -517,7 +515,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
                 amount1Min: 0,
                 deadline: params.deadline
             }),
-            feePips
+            token0FeeAmount,
+            token1FeeAmount
         );
         // Update `recipient` to the current owner
         params.recipient = NPMCaller.ownerOf(npm, tokenId);
@@ -562,21 +561,32 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @inheritdoc IAutomanUniV3MintRebalance
     function mintOptimal(
         IUniV3NPM.MintParams memory params,
-        bytes calldata swapData
+        bytes calldata swapData,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
         PoolKey memory poolKey = castPoolKey(params);
-        uint256 amount0Desired = params.amount0Desired;
-        uint256 amount1Desired = params.amount1Desired;
         // Pull tokens
-        if (amount0Desired != 0) pay(poolKey.token0, msg.sender, address(this), amount0Desired);
-        if (amount1Desired != 0) pay(poolKey.token1, msg.sender, address(this), amount1Desired);
+        if (params.amount0Desired != 0) pay(poolKey.token0, msg.sender, address(this), params.amount0Desired);
+        if (params.amount1Desired != 0) pay(poolKey.token1, msg.sender, address(this), params.amount1Desired);
+        // Collect zap-in fees before swap.
+        _deductFees(
+            poolKey.token0,
+            poolKey.token1,
+            params.amount0Desired,
+            params.amount1Desired,
+            token0FeeAmount,
+            token1FeeAmount
+        );
+        params.amount0Desired -= token0FeeAmount;
+        params.amount1Desired -= token1FeeAmount;
         // Perform optimal swap after which the amounts desired are updated
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             poolKey,
             params.tickLower,
             params.tickUpper,
-            amount0Desired,
-            amount1Desired,
+            params.amount0Desired,
+            params.amount1Desired,
             swapData
         );
         (tokenId, liquidity, amount0, amount1) = _mint(params);
@@ -599,23 +609,27 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @inheritdoc IAutomanCommon
     function increaseLiquidityOptimal(
         INPM.IncreaseLiquidityParams memory params,
-        bytes calldata swapData
+        bytes calldata swapData,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
         Position memory pos = _positions(params.tokenId);
         address token0 = pos.token0;
         address token1 = pos.token1;
-        uint256 amount0Desired = params.amount0Desired;
-        uint256 amount1Desired = params.amount1Desired;
         // Pull tokens
-        if (amount0Desired != 0) pay(token0, msg.sender, address(this), amount0Desired);
-        if (amount1Desired != 0) pay(token1, msg.sender, address(this), amount1Desired);
+        if (params.amount0Desired != 0) pay(token0, msg.sender, address(this), params.amount0Desired);
+        if (params.amount1Desired != 0) pay(token1, msg.sender, address(this), params.amount1Desired);
+        // Collect zap-in fees before swap.
+        _deductFees(token0, token1, params.amount0Desired, params.amount1Desired, token0FeeAmount, token1FeeAmount);
+        params.amount0Desired -= token0FeeAmount;
+        params.amount1Desired -= token1FeeAmount;
         // Perform optimal swap after which the amounts desired are updated
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             castPoolKey(pos),
             pos.tickLower,
             pos.tickUpper,
-            amount0Desired,
-            amount1Desired,
+            params.amount0Desired,
+            params.amount1Desired,
             swapData
         );
         (liquidity, amount0, amount1) = _increaseLiquidity(params, token0, token1);
@@ -625,29 +639,29 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @inheritdoc IAutomanCommon
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) external returns (uint256 amount0, uint256 amount1) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        (amount0, amount1) = _decreaseLiquidity(params, feePips);
+        (amount0, amount1) = _decreaseLiquidity(params, token0FeeAmount, token1FeeAmount);
         emit DecreaseLiquidity(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external returns (uint256 amount0, uint256 amount1) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        (amount0, amount1) = _decreaseLiquidity(params, feePips);
+        (amount0, amount1) = _decreaseLiquidity(params, token0FeeAmount, token1FeeAmount);
         emit DecreaseLiquidity(tokenId);
     }
 
@@ -655,13 +669,13 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function decreaseLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint256 amount) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        amount = _decreaseLiquiditySingle(params, zeroForOne, feePips, swapData);
+        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
         emit DecreaseLiquidity(tokenId);
     }
 
@@ -669,47 +683,47 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function decreaseLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external returns (uint256 amount) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        amount = _decreaseLiquiditySingle(params, zeroForOne, feePips, swapData);
+        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
         emit DecreaseLiquidity(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon
     function removeLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
     ) external returns (uint256 amount0, uint256 amount1) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        (amount0, amount1) = _removeLiquidity(params, feePips);
+        (amount0, amount1) = _removeLiquidity(params, token0FeeAmount, token1FeeAmount);
         emit RemoveLiquidity(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon
     function removeLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external returns (uint256 amount0, uint256 amount1) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        (amount0, amount1) = _removeLiquidity(params, feePips);
+        (amount0, amount1) = _removeLiquidity(params, token0FeeAmount, token1FeeAmount);
         emit RemoveLiquidity(tokenId);
     }
 
@@ -717,13 +731,13 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function removeLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint256 amount) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        amount = _removeLiquiditySingle(params, zeroForOne, feePips, swapData);
+        amount = _removeLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
         emit RemoveLiquidity(tokenId);
     }
 
@@ -731,49 +745,49 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function removeLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external returns (uint256 amount) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        amount = _removeLiquiditySingle(params, zeroForOne, feePips, swapData);
+        amount = _removeLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
         emit RemoveLiquidity(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon
     function reinvest(
         INPM.IncreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        (liquidity, amount0, amount1) = _reinvest(params, feePips, swapData);
+        (liquidity, amount0, amount1) = _reinvest(params, token0FeeAmount, token1FeeAmount, swapData);
         emit Reinvest(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon
     function reinvest(
         INPM.IncreaseLiquidityParams memory params,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
-        checkFeeSanity(feePips);
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        (liquidity, amount0, amount1) = _reinvest(params, feePips, swapData);
+        (liquidity, amount0, amount1) = _reinvest(params, token0FeeAmount, token1FeeAmount, swapData);
         emit Reinvest(tokenId);
     }
 
@@ -781,12 +795,18 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function rebalance(
         IUniV3NPM.MintParams memory params,
         uint256 tokenId,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
-        checkFeeSanity(feePips);
         checkAuthorizedForToken(tokenId);
-        (newTokenId, liquidity, amount0, amount1) = _rebalance(params, tokenId, feePips, swapData);
+        (newTokenId, liquidity, amount0, amount1) = _rebalance(
+            params,
+            tokenId,
+            token0FeeAmount,
+            token1FeeAmount,
+            swapData
+        );
         emit Rebalance(newTokenId);
     }
 
@@ -794,17 +814,23 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function rebalance(
         IUniV3NPM.MintParams memory params,
         uint256 tokenId,
-        uint256 feePips,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
-        checkFeeSanity(feePips);
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        (newTokenId, liquidity, amount0, amount1) = _rebalance(params, tokenId, feePips, swapData);
+        (newTokenId, liquidity, amount0, amount1) = _rebalance(
+            params,
+            tokenId,
+            token0FeeAmount,
+            token1FeeAmount,
+            swapData
+        );
         emit Rebalance(newTokenId);
     }
 }
