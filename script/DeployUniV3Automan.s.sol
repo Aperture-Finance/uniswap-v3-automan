@@ -18,12 +18,12 @@ contract DeployUniV3Automan is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112e429609defd54e2600050000; // mainnet, arbitrum_one, optimism, and polygon
+    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112e429609defd54e2600050000; // mainnet, arbitrum_one, optimism, and polygon
     // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31126da13df7e082a0874b020028; // base
     // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112350766a71aff01bd0a000040; // bnb
     // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31129e5100c6f38046891d010080; // avalanche
     // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127d2397bf1d3d45097b00002c; // scroll
-    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b311279cd7418ade4641cb50000e0; // manta
+    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b311279cd7418ade4641cb50000e0; // manta
     bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127dfc30de0987800003da9a65;
     bytes32 internal constant routerProxySalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112bc2281f12f80c0000280f6fd;
 
@@ -80,17 +80,17 @@ contract DeployUniV3Automan is Script {
         // Compute the address of the contract to be deployed
         UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(automanSalt, initCodeHash)));
 
-        if (address(automan).code.length == 0) {
-            // Deploy automan
-            create2deployer.deploy(0, automanSalt, initCode);
+        // if (address(automan).code.length == 0) {
+        //     // Deploy automan
+        //     create2deployer.deploy(0, automanSalt, initCode);
 
-            // Set up automan
-            automan.setFeeConfig(params.feeConfig);
+        //     // Set up automan
+        //     automan.setFeeConfig(params.feeConfig);
             bool[] memory statuses = new bool[](1);
             statuses[0] = true;
-            address[] memory controllers = new address[](1);
-            controllers[0] = params.controller;
-            automan.setControllers(controllers, statuses);
+            // address[] memory controllers = new address[](1);
+            // controllers[0] = params.controller;
+            // automan.setControllers(controllers, statuses);
             address[] memory swapRouters = new address[](1);
             swapRouters[0] = params.optimalSwapRouter;
             automan.setSwapRouters(swapRouters, statuses);
@@ -98,13 +98,13 @@ contract DeployUniV3Automan is Script {
             // Transfer ownership to the owner
             automan.transferOwnership(params.owner);
 
-            console2.log(
-                "UniV3Automan deployed at: %s with owner %s and controller %s",
-                address(automan),
-                automan.owner(),
-                address(params.controller)
-            );
-        }
+        //     console2.log(
+        //         "UniV3Automan deployed at: %s with owner %s and controller %s",
+        //         address(automan),
+        //         automan.owner(),
+        //         address(params.controller)
+        //     );
+        // }
 
         // Deployment completed.
         vm.stopBroadcast();

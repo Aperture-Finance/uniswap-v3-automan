@@ -289,31 +289,37 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     }
 
     /// @dev Internal collect gas and aperture fees abstraction
-    /// @param token0MinusAbleAmount The amount of token0 collected or zapped in that can minus fees
-    /// @param token1MinusAbleAmount The amount of token1 collected or zapped in that can minus fees
+    /// @param token0 The address of token0
+    /// @param token1 The address of token1
+    /// @param token0DeductibleAmount The amount of token0 collected or zapped in that can deduct fees
+    /// @param token1DeductibleAmount The amount of token1 collected or zapped in that can deduct fees
+    /// @param token0FeeAmount The amount of token0 fees to be deducted
+    /// @param token1FeeAmount The amount of token1 fees to be deducted
+    /// @return token0MinusAbleAmount The amount of token0 after deducting fees
+    /// @return token1MinusAbleAmount The amount of token1 after deducting fees
     function _minusFees(
         address token0,
         address token1,
-        uint256 token0MinusAbleAmount,
-        uint256 token1MinusAbleAmount,
+        uint256 token0DeductibleAmount,
+        uint256 token1DeductibleAmount,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount
     ) private returns (uint256, uint256) {
         // Calculations outside mulDiv won't overflow.
         unchecked {
-            checkFeeSanity(token0FeeAmount, token0MinusAbleAmount);
-            checkFeeSanity(token1FeeAmount, token1MinusAbleAmount);
+            checkFeeSanity(token0FeeAmount, token0DeductibleAmount);
+            checkFeeSanity(token1FeeAmount, token1DeductibleAmount);
             address _feeCollector = feeConfig.feeCollector;
             if (token0FeeAmount != 0) {
-                token0MinusAbleAmount -= token0FeeAmount;
+                token0DeductibleAmount -= token0FeeAmount;
                 refund(token0, _feeCollector, token0FeeAmount);
             }
             if (token1FeeAmount != 0) {
-                token1MinusAbleAmount -= token1FeeAmount;
+                token1DeductibleAmount -= token1FeeAmount;
                 refund(token1, _feeCollector, token1FeeAmount);
             }
         }
-        return (token0MinusAbleAmount, token1MinusAbleAmount);
+        return (token0DeductibleAmount, token1DeductibleAmount);
     }
 
     /// @dev Collect the tokens owed, deduct gas and aperture fees and send it to the fee collector
