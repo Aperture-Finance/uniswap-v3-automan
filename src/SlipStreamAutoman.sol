@@ -295,9 +295,9 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     /// @param token1DeductibleAmount The amount of token1 collected or zapped in that can deduct fees
     /// @param token0FeeAmount The amount of token0 fees to be deducted
     /// @param token1FeeAmount The amount of token1 fees to be deducted
-    /// @return token0MinusAbleAmount The amount of token0 after deducting fees
-    /// @return token1MinusAbleAmount The amount of token1 after deducting fees
-    function _minusFees(
+    /// @return token0DeductibleAmount The amount of token0 after deducting fees
+    /// @return token1DeductibleAmount The amount of token1 after deducting fees
+    function _deductFees(
         address token0,
         address token1,
         uint256 token0DeductibleAmount,
@@ -325,7 +325,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     /// @dev Collect the tokens owed, deduct gas and aperture fees and send it to the fee collector
     /// @return amount0 The amount of token0 after fees
     /// @return amount1 The amount of token1 after fees
-    function _collectMinusFees(
+    function _collectDeductFees(
         uint256 tokenId,
         address token0,
         address token1,
@@ -334,7 +334,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     ) private returns (uint256, uint256) {
         // Collect the fees collected from providing liquidity.
         (uint256 amount0Collected, uint256 amount1Collected) = _collect(tokenId);
-        return _minusFees(token0, token1, amount0Collected, amount1Collected, token0FeeAmount, token1FeeAmount);
+        return _deductFees(token0, token1, amount0Collected, amount1Collected, token0FeeAmount, token1FeeAmount);
     }
 
     /// @dev Internal decrease liquidity abstraction
@@ -348,7 +348,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
         NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees.
-        (amount0, amount1) = _collectMinusFees(tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
+        (amount0, amount1) = _collectDeductFees(tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
         // Send the remaining amounts to the position owner
         address owner = NPMCaller.ownerOf(npm, tokenId);
         if (amount0 != 0) refund(pos.token0, owner, amount0);
@@ -376,7 +376,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees.
         uint256 tokenId = params.tokenId;
-        (uint256 amount0, uint256 amount1) = _collectMinusFees(
+        (uint256 amount0, uint256 amount1) = _collectDeductFees(
             tokenId,
             pos.token0,
             pos.token1,
@@ -409,7 +409,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         amount = _decreaseCollectSingle(params, pos, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
     }
 
-    /// @dev Internal function to remove liquidity and collect tokens to this contract minus fees
+    /// @dev Internal function to remove liquidity, collect tokens to this contract, and deduct fees
     function _removeAndCollect(
         INPM.DecreaseLiquidityParams memory params,
         uint256 token0FeeAmount,
@@ -423,7 +423,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         params.liquidity = pos.liquidity;
         NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees
-        (amount0, amount1) = _collectMinusFees(tokenId, token0, token1, token0FeeAmount, token1FeeAmount);
+        (amount0, amount1) = _collectDeductFees(tokenId, token0, token1, token0FeeAmount, token1FeeAmount);
     }
 
     /// @dev Internal remove liquidity abstraction
@@ -483,7 +483,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             );
         }
         // Collect the tokens owed then deduct gas and aperture fees
-        (amount0, amount1) = _collectMinusFees(
+        (amount0, amount1) = _collectDeductFees(
             params.tokenId,
             pos.token0,
             pos.token1,
@@ -574,7 +574,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         if (params.amount0Desired != 0) pay(poolKey.token0, msg.sender, address(this), params.amount0Desired);
         if (params.amount1Desired != 0) pay(poolKey.token1, msg.sender, address(this), params.amount1Desired);
         // Collect zap-in fees before swap.
-        _minusFees(
+        _deductFees(
             poolKey.token0,
             poolKey.token1,
             params.amount0Desired,
@@ -624,7 +624,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         if (params.amount0Desired != 0) pay(token0, msg.sender, address(this), params.amount0Desired);
         if (params.amount1Desired != 0) pay(token1, msg.sender, address(this), params.amount1Desired);
         // Collect zap-in fees before swap.
-        _minusFees(token0, token1, params.amount0Desired, params.amount1Desired, token0FeeAmount, token1FeeAmount);
+        _deductFees(token0, token1, params.amount0Desired, params.amount1Desired, token0FeeAmount, token1FeeAmount);
         params.amount0Desired -= token0FeeAmount;
         params.amount1Desired -= token1FeeAmount;
         // Perform optimal swap after which the amounts desired are updated

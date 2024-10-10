@@ -80,17 +80,17 @@ contract DeployUniV3Automan is Script {
         // Compute the address of the contract to be deployed
         UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(automanSalt, initCodeHash)));
 
-        // if (address(automan).code.length == 0) {
-        //     // Deploy automan
-        //     create2deployer.deploy(0, automanSalt, initCode);
+        if (address(automan).code.length == 0) {
+            // Deploy automan
+            create2deployer.deploy(0, automanSalt, initCode);
 
-        //     // Set up automan
-        //     automan.setFeeConfig(params.feeConfig);
+            // Set up automan
+            automan.setFeeConfig(params.feeConfig);
             bool[] memory statuses = new bool[](1);
             statuses[0] = true;
-            // address[] memory controllers = new address[](1);
-            // controllers[0] = params.controller;
-            // automan.setControllers(controllers, statuses);
+            address[] memory controllers = new address[](1);
+            controllers[0] = params.controller;
+            automan.setControllers(controllers, statuses);
             address[] memory swapRouters = new address[](1);
             swapRouters[0] = params.optimalSwapRouter;
             automan.setSwapRouters(swapRouters, statuses);
@@ -98,13 +98,13 @@ contract DeployUniV3Automan is Script {
             // Transfer ownership to the owner
             automan.transferOwnership(params.owner);
 
-        //     console2.log(
-        //         "UniV3Automan deployed at: %s with owner %s and controller %s",
-        //         address(automan),
-        //         automan.owner(),
-        //         address(params.controller)
-        //     );
-        // }
+            console2.log(
+                "UniV3Automan deployed at: %s with owner %s and controller %s",
+                address(automan),
+                automan.owner(),
+                address(params.controller)
+            );
+        }
 
         // Deployment completed.
         vm.stopBroadcast();
