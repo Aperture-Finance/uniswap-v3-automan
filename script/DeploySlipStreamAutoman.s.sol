@@ -18,7 +18,8 @@ contract DeploySlipStreamAutoman is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112efe83ae4286e4a037c0300a0;
+    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112efe83ae4286e4a037c0300a0; // base
+    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112c8295bf850d2cf3b04010018; // optimism
     bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112ebdfde3902472dbfc10c0000;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
