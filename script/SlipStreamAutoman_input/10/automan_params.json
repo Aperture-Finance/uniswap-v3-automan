@@ -1,0 +1,10 @@
+{
+  "nonfungiblePositionManager": "0x416b433906b1B72FA758e166e239c43d68dC6F29",
+  "owner": "0x0EDD0A75fd824Ff414247188d483fbB3E4a8e37c",
+  "feeConfig": {
+    "feeLimitPips": 500000000000000000,
+    "feeCollector": "0x0EDD0A75fd824Ff414247188d483fbB3E4a8e37c"
+  },
+  "controller": "0x40725D97f5352dfBf749de29ed328Ac6189e51A9",
+  "optimalSwapRouter": "0x920eE1aDa5C16E82BB0d7876a174407D63C8ec09"
+}
