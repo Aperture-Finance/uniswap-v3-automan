@@ -132,6 +132,8 @@ Generate the standard JSON input and verify the contract on Etherscan with it:
 forge verify-contract 0x00000000Ede6d8D217c60f93191C060747324bca UniV3Automan --optimizer-runs 4194304 --constructor-args 0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88000000000000000000000000beef63ae5a2102506e8a352a5bb32aa8b30b3112 --show-standard-json-input > etherscan.json
 ```
 
+forge verify-contract 0x0000003d82D9fb11e644B84195218DfD3aeC3f73 SlipStreamAutoman --optimizer-runs 4194304 --constructor-args 0x000000000000000000000000416b433906b1B72FA758e166e239c43d68dC6F29000000000000000000000000beef63ae5a2102506e8a352a5bb32aa8b30b3112 --show-standard-json-input > slipstream_base_automanV3.json
+
 Constructor args can be encoded easily using an online ABI tool like https://abi.hashex.org. The above example shows `UniV3Automan` constructor args consisting of the nonfungible position manager contract address followed by the deployer address as the temporary Automan owner during deployment.
 
 **Deployed Contracts**
