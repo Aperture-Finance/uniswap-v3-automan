@@ -253,12 +253,12 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             if (amount0 < amount0Desired) {
                 address token0 = params.token0;
                 token0.safeApprove(address(npm), 0);
-                refund(token0, recipient, amount0Desired - amount0, /* isUnwrapNative = */ true);
+                refund(token0, recipient, amount0Desired - amount0, /* isUnwrapNative= */ true);
             }
             if (amount1 < amount1Desired) {
                 address token1 = params.token1;
                 token1.safeApprove(address(npm), 0);
-                refund(token1, recipient, amount1Desired - amount1, /* isUnwrapNative = */ true);
+                refund(token1, recipient, amount1Desired - amount1, /* isUnwrapNative= */ true);
             }
         }
     }
@@ -276,11 +276,11 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         unchecked {
             if (amount0 < amount0Desired) {
                 token0.safeApprove(address(npm), 0);
-                refund(token0, msg.sender, amount0Desired - amount0, /* isUnwrapNative = */ true);
+                refund(token0, msg.sender, amount0Desired - amount0, /* isUnwrapNative= */ true);
             }
             if (amount1 < amount1Desired) {
                 token1.safeApprove(address(npm), 0);
-                refund(token1, msg.sender, amount1Desired - amount1, /* isUnwrapNative = */ true);
+                refund(token1, msg.sender, amount1Desired - amount1, /* isUnwrapNative= */ true);
             }
         }
     }
@@ -309,11 +309,11 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             address _feeCollector = feeConfig.feeCollector;
             if (token0FeeAmount != 0) {
                 token0DeductibleAmount -= token0FeeAmount;
-                refund(token0, _feeCollector, token0FeeAmount, /* isUnwrapNative = */ true);
+                refund(token0, _feeCollector, token0FeeAmount, /* isUnwrapNative= */ true);
             }
             if (token1FeeAmount != 0) {
                 token1DeductibleAmount -= token1FeeAmount;
-                refund(token1, _feeCollector, token1FeeAmount, /* isUnwrapNative = */ true);
+                refund(token1, _feeCollector, token1FeeAmount, /* isUnwrapNative= */ true);
             }
         }
         return (token0DeductibleAmount, token1DeductibleAmount);
@@ -343,17 +343,25 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     ) private returns (uint256 amount0, uint256 amount1) {
         // uint256 tokenId = params.tokenId; // stacktoodeep error
         Position memory pos = _positions(params.tokenId);
-        // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
+        // Optionally collect without decreasing liquidity.
         if (params.liquidity != 0) {
+            // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
             NPMCaller.decreaseLiquidity(npm, params);
         }
         // Collect the tokens owed and deduct gas and aperture fees.
-        (amount0, amount1) = _collectDeductFees(params.tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
+        (amount0, amount1) = _collectDeductFees(
+            params.tokenId,
+            pos.token0,
+            pos.token1,
+            token0FeeAmount,
+            token1FeeAmount
+        );
         // Send the remaining amounts to the position owner
         address owner = NPMCaller.ownerOf(npm, params.tokenId);
         if (amount0 != 0) refund(pos.token0, owner, amount0, isUnwrapNative);
         if (amount1 != 0) refund(pos.token1, owner, amount1, isUnwrapNative);
         if (params.liquidity == pos.liquidity) {
+            // Burn token when removing all liquidity.
             _burn(params.tokenId);
         }
     }
@@ -377,7 +385,9 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             amountMin = params.amount0Min;
             params.amount0Min = 0;
         }
+        // Optionally collect without decreasing liquidity.
         if (params.liquidity != 0) {
+            // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
             NPMCaller.decreaseLiquidity(npm, params);
         }
         // Collect the tokens owed and deduct gas and aperture fees.
@@ -412,6 +422,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         }
         if (amount < amountMin) revert InsufficientAmount();
         if (params.liquidity == pos.liquidity) {
+            // Burn token when removing all liquidity.
             _burn(tokenId);
         }
     }
@@ -426,7 +437,15 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         bool isUnwrapNative
     ) private returns (uint256 amount) {
         Position memory pos = _positions(params.tokenId);
-        amount = _decreaseCollectSingle(params, pos, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
+        amount = _decreaseCollectSingle(
+            params,
+            pos,
+            zeroForOne,
+            token0FeeAmount,
+            token1FeeAmount,
+            swapData,
+            isUnwrapNative
+        );
     }
 
     /// @dev Internal function to remove liquidity, collect tokens to this contract, and deduct fees
@@ -667,7 +686,14 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     ) external returns (uint256 amount) {
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
+        amount = _decreaseLiquiditySingle(
+            params,
+            zeroForOne,
+            token0FeeAmount,
+            token1FeeAmount,
+            swapData,
+            isUnwrapNative
+        );
         emit DecreaseLiquidity(tokenId);
     }
 
@@ -687,7 +713,14 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
+        amount = _decreaseLiquiditySingle(
+            params,
+            zeroForOne,
+            token0FeeAmount,
+            token1FeeAmount,
+            swapData,
+            isUnwrapNative
+        );
         emit DecreaseLiquidity(tokenId);
     }
 

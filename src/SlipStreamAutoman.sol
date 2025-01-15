@@ -257,12 +257,12 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             if (amount0 < amount0Desired) {
                 address token0 = params.token0;
                 token0.safeApprove(address(npm), 0);
-                refund(token0, recipient, amount0Desired - amount0, /* isUnwrapNative = */ true);
+                refund(token0, recipient, amount0Desired - amount0, /* isUnwrapNative= */ true);
             }
             if (amount1 < amount1Desired) {
                 address token1 = params.token1;
                 token1.safeApprove(address(npm), 0);
-                refund(token1, recipient, amount1Desired - amount1, /* isUnwrapNative = */ true);
+                refund(token1, recipient, amount1Desired - amount1, /* isUnwrapNative= */ true);
             }
         }
     }
@@ -280,11 +280,11 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         unchecked {
             if (amount0 < amount0Desired) {
                 token0.safeApprove(address(npm), 0);
-                refund(token0, msg.sender, amount0Desired - amount0, /* isUnwrapNative = */ true);
+                refund(token0, msg.sender, amount0Desired - amount0, /* isUnwrapNative= */ true);
             }
             if (amount1 < amount1Desired) {
                 token1.safeApprove(address(npm), 0);
-                refund(token1, msg.sender, amount1Desired - amount1, /* isUnwrapNative = */ true);
+                refund(token1, msg.sender, amount1Desired - amount1, /* isUnwrapNative= */ true);
             }
         }
     }
@@ -313,11 +313,11 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             address _feeCollector = feeConfig.feeCollector;
             if (token0FeeAmount != 0) {
                 token0DeductibleAmount -= token0FeeAmount;
-                refund(token0, _feeCollector, token0FeeAmount, /* isUnwrapNative = */ true);
+                refund(token0, _feeCollector, token0FeeAmount, /* isUnwrapNative= */ true);
             }
             if (token1FeeAmount != 0) {
                 token1DeductibleAmount -= token1FeeAmount;
-                refund(token1, _feeCollector, token1FeeAmount, /* isUnwrapNative = */ true);
+                refund(token1, _feeCollector, token1FeeAmount, /* isUnwrapNative= */ true);
             }
         }
         return (token0DeductibleAmount, token1DeductibleAmount);
@@ -347,8 +347,9 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     ) private returns (uint256 amount0, uint256 amount1) {
         // uint256 tokenId = params.tokenId; // stacktoodeep error
         SlipStreamPosition memory pos = _positions(params.tokenId);
-        // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
+        // Optionally collect without decreasing liquidity.
         if (params.liquidity != 0) {
+            // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
             NPMCaller.decreaseLiquidity(npm, params);
         }
         // Collect the tokens owed and deduct gas and aperture fees.
@@ -358,6 +359,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         if (amount0 != 0) refund(pos.token0, owner, amount0, isUnwrapNative);
         if (amount1 != 0) refund(pos.token1, owner, amount1, isUnwrapNative);
         if (params.liquidity == pos.liquidity) {
+            // Burn token when removing all liquidity.
             _burn(params.tokenId);
         }
     }
@@ -381,7 +383,9 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             amountMin = params.amount0Min;
             params.amount0Min = 0;
         }
+        // Optionally collect without decreasing liquidity.
         if (params.liquidity != 0) {
+            // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
             NPMCaller.decreaseLiquidity(npm, params);
         }
         // Collect the tokens owed and deduct gas and aperture fees.
@@ -416,6 +420,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         }
         if (amount < amountMin) revert InsufficientAmount();
         if (params.liquidity == pos.liquidity) {
+            // Burn token when removing all liquidity.
             _burn(tokenId);
         }
     }

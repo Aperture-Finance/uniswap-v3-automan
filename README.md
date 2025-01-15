@@ -110,7 +110,7 @@ git clone https://github.com/0age/create2crunch
 cd create2crunch
 export FACTORY="0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2"
 export CALLER="[DEPLOYER_ADDRESS_GOES_HERE]"
-export INIT_CODE_HASH="0x48684f451a08b8535db7a2b934c443c9f269775950f4bdea4388bc3b5fae75e7"
+export INIT_CODE_HASH="[INIT_CODE_HASH_GOES_HERE]"
 cargo run --release $FACTORY $CALLER $INIT_CODE_HASH
 ```
 

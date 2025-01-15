@@ -598,7 +598,12 @@ contract UniHandler is UniBase {
             if (liquidity != 0) {
                 vm.prank(NPMCaller.ownerOf(npm, tokenId));
                 npm.approve(address(automan), tokenId);
-                (amount0, amount1) = _decreaseLiquidity(tokenId, liquidity, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+                (amount0, amount1) = _decreaseLiquidity(
+                    tokenId,
+                    liquidity,
+                    /* token0FeeAmount= */ 0,
+                    /* token1FeeAmount= */ 0
+                );
                 _tokenIds.remove(tokenId);
                 countCall("decreaseLiquidity");
             }
