@@ -450,6 +450,7 @@ contract UniV3AutomanTest is UniHandler {
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
             /* token0FeeAmount= */ 0,
             /* token1FeeAmount= */ 0,
+            /* isUnwrapNative= */ true,
             deadline,
             v,
             r,
@@ -492,6 +493,7 @@ contract UniV3AutomanTest is UniHandler {
             /* token0FeeAmount= */ 0,
             /* token1FeeAmount= */ 0,
             new bytes(0),
+            /* isUnwrapNative= */ true,
             deadline,
             v,
             r,
@@ -526,16 +528,18 @@ contract UniV3AutomanTest is UniHandler {
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
         uint256 gasBefore = gasleft();
-        (uint256 amount0, uint256 amount1) = automan.removeLiquidity(
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
+        (uint256 amount0, uint256 amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
-                liquidity: 0,
+                liquidity: liquidity,
                 amount0Min: 0,
                 amount1Min: 0,
                 deadline: deadline
             }),
             /* token0FeeAmount= */ 0,
             /* token1FeeAmount= */ 0,
+            /* isUnwrapNative= */ true,
             deadline,
             v,
             r,
@@ -571,10 +575,11 @@ contract UniV3AutomanTest is UniHandler {
         uint256 tokenId = thisTokenId;
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
-        automan.removeLiquiditySingle(
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
+        automan.decreaseLiquiditySingle(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
-                liquidity: 0,
+                liquidity: liquidity,
                 amount0Min: 0,
                 amount1Min: 0,
                 deadline: deadline
@@ -583,6 +588,7 @@ contract UniV3AutomanTest is UniHandler {
             /* token0FeeAmount= */ 0,
             /* token1FeeAmount= */ 0,
             new bytes(0),
+            /* isUnwrapNative= */ true,
             deadline,
             v,
             r,

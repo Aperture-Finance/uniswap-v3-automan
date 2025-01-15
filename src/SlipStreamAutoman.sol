@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol";
 import {ICommonNonfungiblePositionManager as INPM, ISlipStreamNonfungiblePositionManager as ISlipStreamNPM} from "@aperture_finance/uni-v3-lib/src/interfaces/ISlipStreamNonfungiblePositionManager.sol";
+import {ERC20Callee} from "./libraries/ERC20Caller.sol";
 import {LiquidityAmounts} from "@aperture_finance/uni-v3-lib/src/LiquidityAmounts.sol";
 import {NPMCaller, SlipStreamPosition} from "@aperture_finance/uni-v3-lib/src/NPMCaller.sol";
 import {SlipStreamSwapRouter} from "./base/SlipStreamSwapRouter.sol";
@@ -256,12 +257,12 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             if (amount0 < amount0Desired) {
                 address token0 = params.token0;
                 token0.safeApprove(address(npm), 0);
-                refund(token0, recipient, amount0Desired - amount0);
+                refund(token0, recipient, amount0Desired - amount0, /* isUnwrapNative = */ true);
             }
             if (amount1 < amount1Desired) {
                 address token1 = params.token1;
                 token1.safeApprove(address(npm), 0);
-                refund(token1, recipient, amount1Desired - amount1);
+                refund(token1, recipient, amount1Desired - amount1, /* isUnwrapNative = */ true);
             }
         }
     }
@@ -279,11 +280,11 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         unchecked {
             if (amount0 < amount0Desired) {
                 token0.safeApprove(address(npm), 0);
-                refund(token0, msg.sender, amount0Desired - amount0);
+                refund(token0, msg.sender, amount0Desired - amount0, /* isUnwrapNative = */ true);
             }
             if (amount1 < amount1Desired) {
                 token1.safeApprove(address(npm), 0);
-                refund(token1, msg.sender, amount1Desired - amount1);
+                refund(token1, msg.sender, amount1Desired - amount1, /* isUnwrapNative = */ true);
             }
         }
     }
@@ -312,11 +313,11 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             address _feeCollector = feeConfig.feeCollector;
             if (token0FeeAmount != 0) {
                 token0DeductibleAmount -= token0FeeAmount;
-                refund(token0, _feeCollector, token0FeeAmount);
+                refund(token0, _feeCollector, token0FeeAmount, /* isUnwrapNative = */ true);
             }
             if (token1FeeAmount != 0) {
                 token1DeductibleAmount -= token1FeeAmount;
-                refund(token1, _feeCollector, token1FeeAmount);
+                refund(token1, _feeCollector, token1FeeAmount, /* isUnwrapNative = */ true);
             }
         }
         return (token0DeductibleAmount, token1DeductibleAmount);
@@ -341,18 +342,24 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     function _decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
         uint256 token0FeeAmount,
-        uint256 token1FeeAmount
+        uint256 token1FeeAmount,
+        bool isUnwrapNative
     ) private returns (uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        SlipStreamPosition memory pos = _positions(tokenId);
+        // uint256 tokenId = params.tokenId; // stacktoodeep error
+        SlipStreamPosition memory pos = _positions(params.tokenId);
         // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
-        NPMCaller.decreaseLiquidity(npm, params);
+        if (params.liquidity != 0) {
+            NPMCaller.decreaseLiquidity(npm, params);
+        }
         // Collect the tokens owed and deduct gas and aperture fees.
-        (amount0, amount1) = _collectDeductFees(tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
+        (amount0, amount1) = _collectDeductFees(params.tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
         // Send the remaining amounts to the position owner
-        address owner = NPMCaller.ownerOf(npm, tokenId);
-        if (amount0 != 0) refund(pos.token0, owner, amount0);
-        if (amount1 != 0) refund(pos.token1, owner, amount1);
+        address owner = NPMCaller.ownerOf(npm, params.tokenId);
+        if (amount0 != 0) refund(pos.token0, owner, amount0, isUnwrapNative);
+        if (amount1 != 0) refund(pos.token1, owner, amount1, isUnwrapNative);
+        if (params.liquidity == pos.liquidity) {
+            _burn(params.tokenId);
+        }
     }
 
     /// @dev Decrease liquidity and swap the tokens to a single token
@@ -362,7 +369,8 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         bool zeroForOne,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
-        bytes calldata swapData
+        bytes calldata swapData,
+        bool isUnwrapNative
     ) private returns (uint256 amount) {
         uint256 amountMin;
         // Slippage check is done here instead of `NonfungiblePositionManager`
@@ -373,7 +381,9 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             amountMin = params.amount0Min;
             params.amount0Min = 0;
         }
-        NPMCaller.decreaseLiquidity(npm, params);
+        if (params.liquidity != 0) {
+            NPMCaller.decreaseLiquidity(npm, params);
+        }
         // Collect the tokens owed and deduct gas and aperture fees.
         uint256 tokenId = params.tokenId;
         (uint256 amount0, uint256 amount1) = _collectDeductFees(
@@ -384,17 +394,30 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             token1FeeAmount
         );
         // Swap to the desired token and send it to the position owner
-        // It is assumed that the swap is `exactIn` and all of the input tokens are consumed.
+        // Refund any unswapped amount back to the position owner.
+        address owner = NPMCaller.ownerOf(npm, tokenId);
         unchecked {
+            uint256 amountRefund;
             if (zeroForOne) {
                 amount = amount1 + _swap(castPoolKey(pos), amount0, true, swapData);
-                refund(pos.token1, NPMCaller.ownerOf(npm, tokenId), amount);
+                refund(pos.token1, owner, amount, isUnwrapNative);
+                amountRefund = ERC20Callee.wrap(pos.token0).balanceOf(address(this));
+                if (amountRefund != 0) {
+                    refund(pos.token0, owner, amountRefund, isUnwrapNative);
+                }
             } else {
                 amount = amount0 + _swap(castPoolKey(pos), amount1, false, swapData);
-                refund(pos.token0, NPMCaller.ownerOf(npm, tokenId), amount);
+                refund(pos.token0, owner, amount, isUnwrapNative);
+                amountRefund = ERC20Callee.wrap(pos.token1).balanceOf(address(this));
+                if (amountRefund != 0) {
+                    refund(pos.token1, owner, amountRefund, isUnwrapNative);
+                }
             }
         }
         if (amount < amountMin) revert InsufficientAmount();
+        if (params.liquidity == pos.liquidity) {
+            _burn(tokenId);
+        }
     }
 
     /// @dev Internal decrease liquidity abstraction
@@ -403,10 +426,11 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         bool zeroForOne,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
-        bytes calldata swapData
+        bytes calldata swapData,
+        bool isUnwrapNative
     ) private returns (uint256 amount) {
         SlipStreamPosition memory pos = _positions(params.tokenId);
-        amount = _decreaseCollectSingle(params, pos, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
+        amount = _decreaseCollectSingle(params, pos, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
     }
 
     /// @dev Internal function to remove liquidity, collect tokens to this contract, and deduct fees
@@ -424,41 +448,6 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         NPMCaller.decreaseLiquidity(npm, params);
         // Collect the tokens owed and deduct gas and aperture fees
         (amount0, amount1) = _collectDeductFees(tokenId, token0, token1, token0FeeAmount, token1FeeAmount);
-    }
-
-    /// @dev Internal remove liquidity abstraction
-    function _removeLiquidity(
-        INPM.DecreaseLiquidityParams memory params,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount
-    ) private returns (uint256, uint256) {
-        uint256 tokenId = params.tokenId;
-        (address token0, address token1, uint256 amount0, uint256 amount1) = _removeAndCollect(
-            params,
-            token0FeeAmount,
-            token1FeeAmount
-        );
-        address owner = NPMCaller.ownerOf(npm, tokenId);
-        if (amount0 != 0) refund(token0, owner, amount0);
-        if (amount1 != 0) refund(token1, owner, amount1);
-        _burn(tokenId);
-        return (amount0, amount1);
-    }
-
-    /// @dev Internal function to remove liquidity and swap to a single token
-    function _removeLiquiditySingle(
-        INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData
-    ) private returns (uint256 amount) {
-        uint256 tokenId = params.tokenId;
-        SlipStreamPosition memory pos = _positions(tokenId);
-        // Update `params.liquidity` to the current liquidity
-        params.liquidity = pos.liquidity;
-        amount = _decreaseCollectSingle(params, pos, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
-        _burn(tokenId);
     }
 
     /// @dev Internal reinvest abstraction
@@ -644,11 +633,12 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
         uint256 token0FeeAmount,
-        uint256 token1FeeAmount
+        uint256 token1FeeAmount,
+        bool isUnwrapNative
     ) external returns (uint256 amount0, uint256 amount1) {
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        (amount0, amount1) = _decreaseLiquidity(params, token0FeeAmount, token1FeeAmount);
+        (amount0, amount1) = _decreaseLiquidity(params, token0FeeAmount, token1FeeAmount, isUnwrapNative);
         emit DecreaseLiquidity(tokenId);
     }
 
@@ -657,6 +647,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         INPM.DecreaseLiquidityParams memory params,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
+        bool isUnwrapNative,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
@@ -665,21 +656,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        (amount0, amount1) = _decreaseLiquidity(params, token0FeeAmount, token1FeeAmount);
-        emit DecreaseLiquidity(tokenId);
-    }
-
-    /// @inheritdoc IAutomanCommon
-    function decreaseLiquiditySingle(
-        INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData
-    ) external returns (uint256 amount) {
-        uint256 tokenId = params.tokenId;
-        checkAuthorizedForToken(tokenId);
-        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
+        (amount0, amount1) = _decreaseLiquidity(params, token0FeeAmount, token1FeeAmount, isUnwrapNative);
         emit DecreaseLiquidity(tokenId);
     }
 
@@ -690,68 +667,22 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
         bytes calldata swapData,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        bool isUnwrapNative
     ) external returns (uint256 amount) {
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
+        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
         emit DecreaseLiquidity(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon
-    function removeLiquidity(
-        INPM.DecreaseLiquidityParams memory params,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount
-    ) external returns (uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        checkAuthorizedForToken(tokenId);
-        (amount0, amount1) = _removeLiquidity(params, token0FeeAmount, token1FeeAmount);
-        emit RemoveLiquidity(tokenId);
-    }
-
-    /// @inheritdoc IAutomanCommon
-    function removeLiquidity(
-        INPM.DecreaseLiquidityParams memory params,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external returns (uint256 amount0, uint256 amount1) {
-        uint256 tokenId = params.tokenId;
-        checkAuthorizedForToken(tokenId);
-        selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        (amount0, amount1) = _removeLiquidity(params, token0FeeAmount, token1FeeAmount);
-        emit RemoveLiquidity(tokenId);
-    }
-
-    /// @inheritdoc IAutomanCommon
-    function removeLiquiditySingle(
-        INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData
-    ) external returns (uint256 amount) {
-        uint256 tokenId = params.tokenId;
-        checkAuthorizedForToken(tokenId);
-        amount = _removeLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
-        emit RemoveLiquidity(tokenId);
-    }
-
-    /// @inheritdoc IAutomanCommon
-    function removeLiquiditySingle(
+    function decreaseLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
         bytes calldata swapData,
+        bool isUnwrapNative,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
@@ -760,8 +691,8 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        amount = _removeLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData);
-        emit RemoveLiquidity(tokenId);
+        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
+        emit DecreaseLiquidity(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon

@@ -9,23 +9,17 @@ import {UniV3Automan} from "../src/UniV3Automan.sol";
 contract DeployUniV3Automan is Script {
     struct DeployParams {
         // Has to be alphabetically ordered per https://book.getfoundry.sh/cheatcodes/parse-json
+        bytes32 automanSalt;
         address controller;
         UniV3Automan.FeeConfig feeConfig;
         INPM npm;
         address optimalSwapRouter; // Deploy optimal swap router if parsed as address(0).
+        bytes32 optimalSwapRouterSalt;
         address owner;
     }
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112e429609defd54e2600050000; // mainnet, arbitrum_one, optimism, and polygon
-    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31126da13df7e082a0874b020028; // base
-    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112350766a71aff01bd0a000040; // bnb
-    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31129e5100c6f38046891d010080; // avalanche
-    // bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127d2397bf1d3d45097b00002c; // scroll
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b311279cd7418ade4641cb50000e0; // manta
-    bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127dfc30de0987800003da9a65;
-    bytes32 internal constant routerProxySalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112bc2281f12f80c0000280f6fd;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
     function readInput(string memory input) internal view returns (string memory) {
@@ -60,11 +54,11 @@ contract DeployUniV3Automan is Script {
             console2.log("OptimalSwapRouter initCodeHash:");
             console2.logBytes32(initCodeHash);
             UniV3OptimalSwapRouter optimalSwapRouter = UniV3OptimalSwapRouter(
-                payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash))
+                payable(create2deployer.computeAddress(params.optimalSwapRouterSalt, initCodeHash))
             );
             if (address(optimalSwapRouter).code.length == 0) {
                 // Deploy optimalSwapRouter
-                create2deployer.deploy(0, optimalSwapSalt, initCode);
+                create2deployer.deploy(0, params.optimalSwapRouterSalt, initCode);
                 console2.log("UniV3OptimalSwapRouter deployed at: %s", address(optimalSwapRouter));
             }
             params.optimalSwapRouter = address(optimalSwapRouter);
@@ -78,11 +72,11 @@ contract DeployUniV3Automan is Script {
         console2.log("UniV3Automan initCodeHash:");
         console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
-        UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(automanSalt, initCodeHash)));
+        UniV3Automan automan = UniV3Automan(payable(create2deployer.computeAddress(params.automanSalt, initCodeHash)));
 
         if (address(automan).code.length == 0) {
             // Deploy automan
-            create2deployer.deploy(0, automanSalt, initCode);
+            create2deployer.deploy(0, params.automanSalt, initCode);
 
             // Set up automan
             automan.setFeeConfig(params.feeConfig);
