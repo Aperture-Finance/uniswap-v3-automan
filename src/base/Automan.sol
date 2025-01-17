@@ -174,7 +174,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
     /// @param swapData The address of the external router and call data
     /// @return amountOut The amount of token received after swap
-    function _swap(
+    function _swapFromTokenInToTokenOut(
         PoolKey memory poolKey,
         uint256 amountIn,
         bool zeroForOne,
@@ -183,8 +183,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         if (swapData.length == 0) {
             amountOut = _poolSwap(poolKey, computeAddressSorted(poolKey), amountIn, zeroForOne);
         } else {
-            address router = checkRouter(swapData);
-            amountOut = _routerSwap(poolKey, router, zeroForOne, swapData);
+            checkRouter(swapData);
+            amountOut = _routerSwapFromTokenInToTokenOut(poolKey, swapData);
         }
     }
 
@@ -209,14 +209,11 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             (amount0, amount1) = _optimalSwapWithPool(poolKey, tickLower, tickUpper, amount0Desired, amount1Desired);
         } else {
             // Swap with a whitelisted router
-            address router = checkRouter(swapData);
+            checkRouter(swapData);
             (amount0, amount1) = _optimalSwapWithRouter(
                 poolKey,
-                router,
                 tickLower,
                 tickUpper,
-                amount0Desired,
-                amount1Desired,
                 swapData
             );
         }
@@ -405,14 +402,14 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         unchecked {
             uint256 amountRefund;
             if (zeroForOne) {
-                amount = amount1 + _swap(castPoolKey(pos), amount0, true, swapData);
+                amount = amount1 + _swapFromTokenInToTokenOut(castPoolKey(pos), amount0, true, swapData);
                 refund(pos.token1, owner, amount, isUnwrapNative);
                 amountRefund = ERC20Callee.wrap(pos.token0).balanceOf(address(this));
                 if (amountRefund != 0) {
                     refund(pos.token0, owner, amountRefund, isUnwrapNative);
                 }
             } else {
-                amount = amount0 + _swap(castPoolKey(pos), amount1, false, swapData);
+                amount = amount0 + _swapFromTokenInToTokenOut(castPoolKey(pos), amount1, false, swapData);
                 refund(pos.token0, owner, amount, isUnwrapNative);
                 amountRefund = ERC20Callee.wrap(pos.token1).balanceOf(address(this));
                 if (amountRefund != 0) {

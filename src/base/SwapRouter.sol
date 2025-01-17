@@ -77,62 +77,97 @@ abstract contract SwapRouter is Payments {
         }
     }
 
-    /// @dev Make an `exactIn` swap through a whitelisted external router
-    /// @param poolKey The pool key containing the token addresses and fee tier
-    /// @param router The address of the external router
-    /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
-    /// @param swapData The address of the external router and call data, not abi-encoded
-    /// @return amountOut The amount of token received after swap
-    function _routerSwap(
-        PoolKey memory poolKey,
+    function _routerSwapFromTokenInToTokenOutHelper(
+        address tokenIn,
+        address approvalTarget,
         address router,
-        bool zeroForOne,
-        bytes calldata swapData
-    ) internal returns (uint256 amountOut) {
-        (address tokenIn, address tokenOut) = zeroForOne.switchIf(poolKey.token1, poolKey.token0);
-        uint256 balanceBefore = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
-        // Approve `router` to spend `tokenIn`
-        tokenIn.safeApprove(router, type(uint256).max);
-        /*
-            If `swapData` is encoded as `abi.encode(router, data)`, the memory layout will be:
-            0x00         : 0x20         : 0x40         : 0x60         : 0x80
-            total length : router       : 0x40 (offset): data length  : data
-            Instead, we encode it as:
-            ```
-            bytes memory swapData = abi.encodePacked(router, data);
-            ```
-            So the memory layout will be:
-            0x00         : 0x20         : 0x34
-            total length : router       : data
-            To decode it in memory, one can use:
-            ```
-            bytes memory data;
-            assembly {
-                router := shr(96, mload(add(swapData, 0x20)))
-                data := add(swapData, 0x14)
-                mstore(data, sub(mload(swapData), 0x14))
-            }
-            ```
-            knowing that `data.length == swapData.length - 20`.
-        */
+        bytes calldata data
+    ) internal {
+        tokenIn.safeApprove(approvalTarget, type(uint256).max);
         assembly ("memory-safe") {
             let fmp := mload(0x40)
-            // Strip the first 20 bytes of `swapData` which is the router address.
-            let calldataLength := sub(swapData.length, 20)
-            calldatacopy(fmp, add(swapData.offset, 20), calldataLength)
+            calldatacopy(fmp, data.offset, data.length)
             // Ignore the return data unless an error occurs
-            if iszero(call(gas(), router, 0, fmp, calldataLength, 0, 0)) {
+            if iszero(call(gas(), router, 0, fmp, data.length, 0, 0)) {
                 returndatacopy(0, 0, returndatasize())
                 // Bubble up the revert reason.
                 revert(0, returndatasize())
             }
         }
-        // Reset approval
-        tokenIn.safeApprove(router, 0);
+        tokenIn.safeApprove(approvalTarget, 0);
+    }
+
+    /// @dev Make an `exactIn` swap through a whitelisted external router
+    /// @param poolKey The pool key containing the token addresses and fee tier
+    /// @param swapData The address of the external router and call data, not abi-encoded
+    /// @return amountOut The amount of token received after swap
+    function _routerSwapFromTokenInToTokenOut(
+        PoolKey memory poolKey,
+        bytes calldata swapData
+    ) internal returns (uint256 amountOut) {
+        bool zeroForOne;
+        address approvalTarget;
+        address router;
+        assembly {
+            zeroForOne := shr(248, calldataload(49))
+            approvalTarget := shr(96, calldataload(50))
+            router := shr(96, calldataload(70))
+        }
+        (address tokenIn, address tokenOut) = zeroForOne.switchIf(poolKey.token1, poolKey.token0);
+        uint256 balanceBefore = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
+        _routerSwapFromTokenInToTokenOutHelper(tokenIn, approvalTarget, router, swapData);
         uint256 balanceAfter = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
         unchecked {
             amountOut = balanceAfter - balanceBefore;
         }
+    }
+
+    function _routerSwapToOptimalRatio(
+        PoolKey memory poolKey,
+        int24 tickLower,
+        int24 tickUpper,
+        bytes calldata swapData
+    ) internal {
+        _routerSwapFromTokenInToTokenOut(poolKey, swapData);
+        bool zeroForOne;
+        assembly {
+            zeroForOne := shr(248, calldataload(49))
+        }
+        uint256 balance0 = ERC20Callee.wrap(poolKey.token0).balanceOf(address(this));
+        uint256 balance1 = ERC20Callee.wrap(poolKey.token1).balanceOf(address(this));
+        uint256 amountIn;
+        uint256 amountOut;
+        {
+            address pool = computeAddressSorted(poolKey);
+            uint256 amount0Desired;
+            uint256 amount1Desired;
+            // take into account the balance not pulled from the sender
+            if (zeroForOne) {
+                amount0Desired = balance0;
+                amount1Desired = balance1 + ERC20Callee.wrap(poolKey.token1).balanceOf(msg.sender);
+            } else {
+                amount0Desired = balance0 + ERC20Callee.wrap(poolKey.token0).balanceOf(msg.sender);
+                amount1Desired = balance1;
+            }
+            (amountIn, , zeroForOne, ) = OptimalSwap.getOptimalSwap(
+                V3PoolCallee.wrap(pool),
+                tickLower,
+                tickUpper,
+                amount0Desired,
+                amount1Desired
+            );
+            amountOut = _poolSwap(poolKey, pool, amountIn, zeroForOne);
+        }
+        // balance0 = balance0 + zeroForOne ? - amountIn : amountOut
+        // balance1 = balance1 + zeroForOne ? amountOut : - amountIn
+        assembly {
+            let minusAmountIn := sub(0, amountIn)
+            let diff := mul(xor(amountOut, minusAmountIn), zeroForOne)
+            balance0 := add(balance0, xor(amountOut, diff))
+            balance1 := add(balance1, xor(minusAmountIn, diff))
+        }
+        if (balance0 != 0) poolKey.token0.safeTransfer(msg.sender, balance0);
+        if (balance1 != 0) poolKey.token1.safeTransfer(msg.sender, balance1);
     }
 
     /// @dev Swap tokens to the optimal ratio to add liquidity in the same pool
@@ -170,31 +205,17 @@ abstract contract SwapRouter is Payments {
 
     /// @dev Swap tokens to the optimal ratio to add liquidity with an external router
     /// @param poolKey The pool key containing the token addresses and fee tier
-    /// @param router The address of the external router
     /// @param tickLower The lower tick of the position in which to add liquidity
     /// @param tickUpper The upper tick of the position in which to add liquidity
-    /// @param amount0Desired The desired amount of token0 to be spent
-    /// @param amount1Desired The desired amount of token1 to be spent
     /// @return amount0 The amount of token0 after swap
     /// @return amount1 The amount of token1 after swap
     function _optimalSwapWithRouter(
         PoolKey memory poolKey,
-        address router,
         int24 tickLower,
         int24 tickUpper,
-        uint256 amount0Desired,
-        uint256 amount1Desired,
         bytes calldata swapData
     ) internal returns (uint256 amount0, uint256 amount1) {
-        (uint160 sqrtPriceX96, ) = V3PoolCallee.wrap(computeAddressSorted(poolKey)).sqrtPriceX96AndTick();
-        bool zeroForOne = OptimalSwap.isZeroForOne(
-            amount0Desired,
-            amount1Desired,
-            sqrtPriceX96,
-            tickLower.getSqrtRatioAtTick(),
-            tickUpper.getSqrtRatioAtTick()
-        );
-        _routerSwap(poolKey, router, zeroForOne, swapData);
+        _routerSwapToOptimalRatio(poolKey, tickLower, tickUpper, swapData);
         amount0 = ERC20Callee.wrap(poolKey.token0).balanceOf(address(this));
         amount1 = ERC20Callee.wrap(poolKey.token1).balanceOf(address(this));
     }

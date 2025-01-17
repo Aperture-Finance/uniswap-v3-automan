@@ -16,7 +16,6 @@ interface ISwapRouterHandler {
 
     function routerSwap(
         PoolKey memory poolKey,
-        address router,
         uint256 amountIn,
         bool zeroForOne,
         bytes calldata swapData
@@ -32,7 +31,6 @@ interface ISwapRouterHandler {
 
     function optimalSwapWithRouter(
         PoolKey memory poolKey,
-        address router,
         int24 tickLower,
         int24 tickUpper,
         uint256 amount0Desired,
@@ -63,21 +61,19 @@ abstract contract SwapRouterHandler is SwapRouter, Helper, ISwapRouterHandler {
 
     /// @dev Make an `exactIn` swap through a whitelisted external router
     /// @param poolKey The pool key containing the token addresses and fee tier
-    /// @param router The address of the external router
     /// @param amountIn The amount of token to be swapped
     /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
     /// @param swapData The address of the external router and call data, not abi-encoded
     /// @return amountOut The amount of token received after swap
     function routerSwap(
         PoolKey memory poolKey,
-        address router,
         uint256 amountIn,
         bool zeroForOne,
         bytes calldata swapData
     ) external returns (uint256 amountOut) {
         (address tokenIn, address tokenOut) = switchIf(zeroForOne, poolKey.token1, poolKey.token0);
         pay(tokenIn, msg.sender, address(this), amountIn);
-        amountOut = _routerSwap(poolKey, router, zeroForOne, swapData);
+        amountOut = _routerSwapFromTokenInToTokenOut(poolKey, swapData);
         pay(tokenOut, address(this), msg.sender, amountOut);
     }
 
@@ -105,7 +101,6 @@ abstract contract SwapRouterHandler is SwapRouter, Helper, ISwapRouterHandler {
 
     /// @dev Swap tokens to the optimal ratio to add liquidity with an external router
     /// @param poolKey The pool key containing the token addresses and fee tier
-    /// @param router The address of the external router
     /// @param tickLower The lower tick of the position in which to add liquidity
     /// @param tickUpper The upper tick of the position in which to add liquidity
     /// @param amount0Desired The desired amount of token0 to be spent
@@ -114,7 +109,6 @@ abstract contract SwapRouterHandler is SwapRouter, Helper, ISwapRouterHandler {
     /// @return amount1 The amount of token1 after swap
     function optimalSwapWithRouter(
         PoolKey memory poolKey,
-        address router,
         int24 tickLower,
         int24 tickUpper,
         uint256 amount0Desired,
@@ -125,11 +119,8 @@ abstract contract SwapRouterHandler is SwapRouter, Helper, ISwapRouterHandler {
         pay(poolKey.token1, msg.sender, address(this), amount1Desired);
         (amount0, amount1) = _optimalSwapWithRouter(
             poolKey,
-            router,
             tickLower,
             tickUpper,
-            amount0Desired,
-            amount1Desired,
             swapData
         );
         pay(poolKey.token0, address(this), msg.sender, amount0);
@@ -197,7 +188,6 @@ contract SwapRouterTest is UniBase {
         );
         uint256 amountOut = router.routerSwap(
             poolKey,
-            v3SwapRouter,
             amountSpecified,
             zeroForOne,
             abi.encodePacked(v3SwapRouter, data)
@@ -271,7 +261,6 @@ contract SwapRouterTest is UniBase {
             }
             (uint256 amount0, uint256 amount1) = router.optimalSwapWithRouter(
                 poolKey,
-                v3SwapRouter,
                 tickLower,
                 tickUpper,
                 amount0Desired,
