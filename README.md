@@ -129,8 +129,7 @@ Re-simulate `DeployUniV3Automan` with a dry-run to verify that the deployment ad
 Generate the standard JSON input and verify the contract on Etherscan with it:
 
 ```shell
-forge verify-contract 0x0000003858948F29A38C6c3Ca09a1cD53a58DC34 UniV3Automan --optimizer-runs 4194304 --constructor-args 0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88000000000000000000000000beef63ae5a2102506e8a352a5bb32aa8b30b3112 --show-standard-json-input > UniV3Automan.json
-forge verify-contract 0x00000004D523574c93021f52E520ec4fb2FFA564 UniV3OptimalSwapRouter --optimizer-runs 4194304 --constructor-args 0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88 --show-standard-json-input > UniV3OptimalSwapRouter.json
+forge verify-contract 0x0000006b9dd049CAE1548aA6bE06AB86a1960294 UniV3Automan --optimizer-runs 4194304 --constructor-args 0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88000000000000000000000000beef63ae5a2102506e8a352a5bb32aa8b30b3112 --show-standard-json-input > broadcast/DeployUniV3Automan.s.sol/42161/UniV3Automan.json
 ```
 
 Constructor args can be encoded easily using an online ABI tool like https://abi.hashex.org. The above example shows `UniV3Automan` constructor args consisting of the nonfungible position manager contract address followed by the deployer address as the temporary Automan owner during deployment.

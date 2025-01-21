@@ -109,9 +109,35 @@ abstract contract SwapRouter is Payments {
         address approvalTarget;
         address router;
         assembly {
-            zeroForOne := shr(248, calldataload(49))
-            approvalTarget := shr(96, calldataload(50))
-            router := shr(96, calldataload(70))
+            /*
+            `swapData` is encoded as `abi.encodePacked(token0, token1, fee, tickLower, tickUpper, zeroForOne, approvalTarget, router, data)`
+            | Arg            | Offset   |
+            |----------------|----------|
+            | token0         | [0, 20)  |
+            | token1         | [20, 40) |
+            | fee            | [40, 43) |
+            | tickLower      | [43, 46) |
+            | tickUpper      | [46, 49) |
+            | zeroForOne     | [49, 50) |
+            | approvalTarget | [50, 70) |
+            | router         | [70, 90) |
+            | data.offset    | [90, )   |
+
+            Word sizes are 32 bytes, and addresses are 20 bytes, so need to shift right 12 bytes = 96 bits
+            Therefore, token0 := shr(96, calldataload(add(swapData.offset, 20)))
+            Or alternatively, token0 := calldataload(add(swapData.offset, 8))
+            Likewise,
+                token1 := calldataload(add(swapData.offset, 28))
+                fee := calldataload(add(swapData.offset, 31))
+                tickLower := calldataload(add(swapData.offset, 34))
+                tickUpper := calldataload(add(swapData.offset, 37))
+                zeroForOne := calldataload(add(swapData.offset, 38))
+                approvalTarget := calldataload(add(swapData.offset, 58))
+                router := calldataload(add(swapData.offset, 78))
+        */
+            zeroForOne := calldataload(add(swapData.offset, 38))
+            approvalTarget := calldataload(add(swapData.offset, 58))
+            router := calldataload(add(swapData.offset, 78))
         }
         (address tokenIn, address tokenOut) = zeroForOne.switchIf(poolKey.token1, poolKey.token0);
         uint256 balanceBefore = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
@@ -131,7 +157,8 @@ abstract contract SwapRouter is Payments {
         _routerSwapFromTokenInToTokenOut(poolKey, swapData);
         bool zeroForOne;
         assembly {
-            zeroForOne := shr(248, calldataload(49))
+            // For explanation, see around line 125 of src/base/SwapRouter.sol
+            zeroForOne := calldataload(add(swapData.offset, 38))
         }
         uint256 balance0 = ERC20Callee.wrap(poolKey.token0).balanceOf(address(this));
         uint256 balance1 = ERC20Callee.wrap(poolKey.token1).balanceOf(address(this));

@@ -110,9 +110,10 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
         address approvalTarget;
         address router;
         assembly {
-            zeroForOne := shr(248, calldataload(49))
-            approvalTarget := shr(96, calldataload(50))
-            router := shr(96, calldataload(70))
+            // For explanation, see around line 125 of src/base/SwapRouter.sol
+            zeroForOne := calldataload(add(swapData.offset, 38))
+            approvalTarget := calldataload(add(swapData.offset, 58))
+            router := calldataload(add(swapData.offset, 78))
         }
         (address tokenIn, address tokenOut) = zeroForOne.switchIf(poolKey.token1, poolKey.token0);
         uint256 balanceBefore = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
@@ -132,7 +133,8 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
         _routerSwapFromTokenInToTokenOut(poolKey, swapData);
         bool zeroForOne;
         assembly {
-            zeroForOne := shr(248, calldataload(49))
+            // For explanation, see around line 125 of src/base/SwapRouter.sol
+            zeroForOne := calldataload(add(swapData.offset, 38))
         }
         uint256 balance0 = ERC20Callee.wrap(poolKey.token0).balanceOf(address(this));
         uint256 balance1 = ERC20Callee.wrap(poolKey.token1).balanceOf(address(this));
