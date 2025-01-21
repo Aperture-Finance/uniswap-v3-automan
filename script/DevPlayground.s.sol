@@ -36,6 +36,10 @@ contract DevPlayground is Script {
         return r;
     }
 
+    function checkData(bytes calldata data) public view {
+
+    }
+
     function checkRouter(bytes calldata swapData) public view returns (address router) {
         /**
             `msg.data` is encoded as `abi.encodePacked(token0, token1, fee, tickLower, tickUpper, zeroForOne,
@@ -187,8 +191,25 @@ contract DevPlayground is Script {
             router := calldataload(add(swapData.offset, 78))
         }
         console2.log("router: %s", router);
+        // In solidity, the 0x40 slot in memory is special: it contains the "free memory pointer" which points to the end of the currently allocated memory
+        uint256 calldatasizeVar;
+        uint256 swapDataSize;
+        bytes calldata data;
+        assembly {
+            swapDataSize := sub(swapData.length, 110)
+            calldatasizeVar := calldatasize()
+            data.length := sub(swapData.length, 110)
+            data.offset := add(swapData.offset, 110)
+        }
+        this.checkData(data);
+        console2.log("calldatasizeVar: %s", calldatasizeVar);
+        console2.log("swapDataSize: %s", swapDataSize);
     }
 
+    // 0x0000000bd2c4c865c555c30a403ed4f4c94facf482af49447d8a07e3bd95bd0d56f35241523fbab1af88d065e77c8cc2239327c5edb3a432268e5831000bb8fd114cfd1d7c0170cbb871e8f30fc8ce23609e9e0ea87b6b222f58f332761c673b59b21ff6dfa8ada44d78c12def09
+    // 0d5f0e3b0000000000000000000198670000000bd2c4c865c555c30a403ed4f4c94facf40000000000000000000000000000000000000000000000000004beffc03716fe0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000010000000000000000000000006f38e884725a116c9c7fbf208e79fe8828a2595f
+    // should be 196
+    // 306 - 110 = 196
     function run() public view {
         // https://ethereum.stackexchange.com/questions/39989/solidity-convert-hex-string-to-bytes
         bytes memory swapData = fromHex("0000000bd2c4c865c555c30a403ed4f4c94facf482af49447d8a07e3bd95bd0d56f35241523fbab1af88d065e77c8cc2239327c5edb3a432268e5831000bb8fd114cfd1d7c0170cbb871e8f30fc8ce23609e9e0ea87b6b222f58f332761c673b59b21ff6dfa8ada44d78c12def090d5f0e3b0000000000000000000198670000000bd2c4c865c555c30a403ed4f4c94facf40000000000000000000000000000000000000000000000000004beffc03716fe0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000010000000000000000000000006f38e884725a116c9c7fbf208e79fe8828a2595f");

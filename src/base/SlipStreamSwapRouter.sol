@@ -78,26 +78,6 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
         }
     }
 
-    function _routerSwapFromTokenInToTokenOutHelper(
-        address tokenIn,
-        address approvalTarget,
-        address router,
-        bytes calldata data
-    ) internal {
-        tokenIn.safeApprove(approvalTarget, type(uint256).max);
-        assembly ("memory-safe") {
-            let fmp := mload(0x40)
-            calldatacopy(fmp, data.offset, data.length)
-            // Ignore the return data unless an error occurs
-            if iszero(call(gas(), router, 0, fmp, data.length, 0, 0)) {
-                returndatacopy(0, 0, returndatasize())
-                // Bubble up the revert reason.
-                revert(0, returndatasize())
-            }
-        }
-        tokenIn.safeApprove(approvalTarget, 0);
-    }
-
     /// @dev Make an `exactIn` swap through a whitelisted external router
     /// @param poolKey The pool key containing the token addresses and fee tier
     /// @param swapData The address of the external router and call data, not abi-encoded
@@ -109,15 +89,30 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
         bool zeroForOne;
         address approvalTarget;
         address router;
+        bytes calldata data;
         assembly {
             // For explanation, see around line 125 of src/base/SwapRouter.sol
             zeroForOne := calldataload(add(swapData.offset, 38))
             approvalTarget := calldataload(add(swapData.offset, 58))
             router := calldataload(add(swapData.offset, 78))
+            data.length := sub(swapData.length, 110)
+            data.offset := add(swapData.offset, 110)
         }
         (address tokenIn, address tokenOut) = zeroForOne.switchIf(poolKey.token1, poolKey.token0);
         uint256 balanceBefore = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
-        _routerSwapFromTokenInToTokenOutHelper(tokenIn, approvalTarget, router, swapData);
+        tokenIn.safeApprove(approvalTarget, type(uint256).max);
+        assembly ("memory-safe") {
+            // In solidity, the 0x40 slot in memory is special: it contains the "free memory pointer" which points to the end of the currently allocated memory
+            let fmp := mload(0x40)
+            calldatacopy(fmp, data.offset, data.length)
+            // Ignore the return data unless an error occurs
+            if iszero(call(gas(), router, 0, fmp, data.length, 0, 0)) {
+                returndatacopy(0, 0, returndatasize())
+                // Bubble up the revert reason.
+                revert(0, returndatasize())
+            }
+        }
+        tokenIn.safeApprove(approvalTarget, 0);
         uint256 balanceAfter = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
         unchecked {
             amountOut = balanceAfter - balanceBefore;

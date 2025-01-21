@@ -77,26 +77,6 @@ abstract contract SwapRouter is Payments {
         }
     }
 
-    function _routerSwapFromTokenInToTokenOutHelper(
-        address tokenIn,
-        address approvalTarget,
-        address router,
-        bytes calldata data
-    ) internal {
-        tokenIn.safeApprove(approvalTarget, type(uint256).max);
-        assembly ("memory-safe") {
-            let fmp := mload(0x40)
-            calldatacopy(fmp, data.offset, data.length)
-            // Ignore the return data unless an error occurs
-            if iszero(call(gas(), router, 0, fmp, data.length, 0, 0)) {
-                returndatacopy(0, 0, returndatasize())
-                // Bubble up the revert reason.
-                revert(0, returndatasize())
-            }
-        }
-        tokenIn.safeApprove(approvalTarget, 0);
-    }
-
     /// @dev Make an `exactIn` swap through a whitelisted external router
     /// @param poolKey The pool key containing the token addresses and fee tier
     /// @param swapData The address of the external router and call data, not abi-encoded
@@ -108,24 +88,26 @@ abstract contract SwapRouter is Payments {
         bool zeroForOne;
         address approvalTarget;
         address router;
+        bytes calldata data;
         assembly {
             /*
             `swapData` is encoded as `abi.encodePacked(token0, token1, fee, tickLower, tickUpper, zeroForOne, approvalTarget, router, data)`
-            | Arg            | Offset   |
-            |----------------|----------|
-            | token0         | [0, 20)  |
-            | token1         | [20, 40) |
-            | fee            | [40, 43) |
-            | tickLower      | [43, 46) |
-            | tickUpper      | [46, 49) |
-            | zeroForOne     | [49, 50) |
-            | approvalTarget | [50, 70) |
-            | router         | [70, 90) |
-            | data.offset    | [90, )   |
+            | Arg            | Offset     |
+            |----------------|------------|
+            | optimalSwapRtr | [  0,  20) |
+            | token0         | [ 20,  40) |
+            | token1         | [ 40,  60) |
+            | fee            | [ 60,  63) |
+            | tickLower      | [ 63,  66) |
+            | tickUpper      | [ 66,  69) |
+            | zeroForOne     | [ 69,  70) |
+            | approvalTarget | [ 70,  90) |
+            | router         | [ 90, 110) |
+            | data.offset    | [110,    ) |
 
             Word sizes are 32 bytes, and addresses are 20 bytes, so need to shift right 12 bytes = 96 bits
             Therefore, token0 := shr(96, calldataload(add(swapData.offset, 20)))
-            Or alternatively, token0 := calldataload(add(swapData.offset, 8))
+            Alternatively, token0 := calldataload(add(swapData.offset, 8))
             Likewise,
                 token1 := calldataload(add(swapData.offset, 28))
                 fee := calldataload(add(swapData.offset, 31))
@@ -134,14 +116,28 @@ abstract contract SwapRouter is Payments {
                 zeroForOne := calldataload(add(swapData.offset, 38))
                 approvalTarget := calldataload(add(swapData.offset, 58))
                 router := calldataload(add(swapData.offset, 78))
-        */
+            */
             zeroForOne := calldataload(add(swapData.offset, 38))
             approvalTarget := calldataload(add(swapData.offset, 58))
             router := calldataload(add(swapData.offset, 78))
+            data.length := sub(swapData.length, 110)
+            data.offset := add(swapData.offset, 110)
         }
         (address tokenIn, address tokenOut) = zeroForOne.switchIf(poolKey.token1, poolKey.token0);
         uint256 balanceBefore = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
-        _routerSwapFromTokenInToTokenOutHelper(tokenIn, approvalTarget, router, swapData);
+        tokenIn.safeApprove(approvalTarget, type(uint256).max);
+        assembly ("memory-safe") {
+            // In solidity, the 0x40 slot in memory is special: it contains the "free memory pointer" which points to the end of the currently allocated memory
+            let fmp := mload(0x40)
+            calldatacopy(fmp, data.offset, data.length)
+            // Ignore the return data unless an error occurs
+            if iszero(call(gas(), router, 0, fmp, data.length, 0, 0)) {
+                returndatacopy(0, 0, returndatasize())
+                // Bubble up the revert reason.
+                revert(0, returndatasize())
+            }
+        }
+        tokenIn.safeApprove(approvalTarget, 0);
         uint256 balanceAfter = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
         unchecked {
             amountOut = balanceAfter - balanceBefore;
