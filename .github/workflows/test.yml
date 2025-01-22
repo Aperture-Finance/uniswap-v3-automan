@@ -8,6 +8,7 @@ on:
 
 env:
   FOUNDRY_PROFILE: lite
+  ALCHEMY_API_KEY: ${{ secrets.ALCHEMY_API_KEY }}
   MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
   BASE_RPC_URL: ${{ secrets.BASE_RPC_URL }}
 
