@@ -183,8 +183,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         if (swapData.length == 0) {
             amountOut = _poolSwap(poolKey, computeAddressSorted(poolKey), amountIn, zeroForOne);
         } else {
-            checkRouter(swapData);
-            amountOut = _routerSwapFromTokenInToTokenOut(poolKey, swapData);
+            address router = checkRouter(swapData);
+            amountOut = _routerSwapFromTokenInToTokenOut(poolKey, router, zeroForOne, swapData);
         }
     }
 
@@ -209,11 +209,14 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             (amount0, amount1) = _optimalSwapWithPool(poolKey, tickLower, tickUpper, amount0Desired, amount1Desired);
         } else {
             // Swap with a whitelisted router
-            checkRouter(swapData);
+            address router = checkRouter(swapData);
             (amount0, amount1) = _optimalSwapWithRouter(
                 poolKey,
+                router,
                 tickLower,
                 tickUpper,
+                amount0Desired,
+                amount1Desired,
                 swapData
             );
         }

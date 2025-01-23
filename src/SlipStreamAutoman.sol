@@ -189,8 +189,8 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         if (swapData.length == 0) {
             amountOut = _poolSwap(poolKey, computeAddressSorted(poolKey), amountIn, zeroForOne);
         } else {
-            checkRouter(swapData);
-            amountOut = _routerSwapFromTokenInToTokenOut(poolKey, swapData);
+            address router = checkRouter(swapData);
+            amountOut = _routerSwapToOptimalRatio(poolKey, router, zeroForOne, swapData);
         }
     }
 
@@ -215,11 +215,14 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             (amount0, amount1) = _optimalSwapWithPool(poolKey, tickLower, tickUpper, amount0Desired, amount1Desired);
         } else {
             // Swap with a whitelisted router
-            checkRouter(swapData);
+            address router = checkRouter(swapData);
             (amount0, amount1) = _optimalSwapWithRouter(
                 poolKey,
+                router,
                 tickLower,
                 tickUpper,
+                amount0Desired,
+                amount1Desired,
                 swapData
             );
         }

@@ -186,7 +186,6 @@ contract DevPlayground is Script {
             approvalTarget := calldataload(add(swapData.offset, 58))
         }
         console2.log("approvalTarget: %s", approvalTarget);
-        address router;
         assembly {
             router := calldataload(add(swapData.offset, 78))
         }
