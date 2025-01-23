@@ -5,7 +5,6 @@ pragma solidity ^0.8.18;
 import "forge-std/Script.sol";
 
 contract DevPlayground is Script {
-
     // struct NestedToml {
     struct NestedTest {
         address a;
@@ -13,32 +12,29 @@ contract DevPlayground is Script {
     }
 
     function fromHexChar(uint8 c) public pure returns (uint8) {
-        if (bytes1(c) >= bytes1('0') && bytes1(c) <= bytes1('9')) {
-            return c - uint8(bytes1('0'));
+        if (bytes1(c) >= bytes1("0") && bytes1(c) <= bytes1("9")) {
+            return c - uint8(bytes1("0"));
         }
-        if (bytes1(c) >= bytes1('a') && bytes1(c) <= bytes1('f')) {
-            return 10 + c - uint8(bytes1('a'));
+        if (bytes1(c) >= bytes1("a") && bytes1(c) <= bytes1("f")) {
+            return 10 + c - uint8(bytes1("a"));
         }
-        if (bytes1(c) >= bytes1('A') && bytes1(c) <= bytes1('F')) {
-            return 10 + c - uint8(bytes1('A'));
+        if (bytes1(c) >= bytes1("A") && bytes1(c) <= bytes1("F")) {
+            return 10 + c - uint8(bytes1("A"));
         }
         revert("fail");
     }
 
     function fromHex(string memory s) public pure returns (bytes memory) {
         bytes memory ss = bytes(s);
-        require(ss.length%2 == 0); // length must be even
-        bytes memory r = new bytes(ss.length/2);
-        for (uint i=0; i<ss.length/2; ++i) {
-            r[i] = bytes1(fromHexChar(uint8(ss[2*i])) * 16 +
-                        fromHexChar(uint8(ss[2*i+1])));
+        require(ss.length % 2 == 0); // length must be even
+        bytes memory r = new bytes(ss.length / 2);
+        for (uint i = 0; i < ss.length / 2; ++i) {
+            r[i] = bytes1(fromHexChar(uint8(ss[2 * i])) * 16 + fromHexChar(uint8(ss[2 * i + 1])));
         }
         return r;
     }
 
-    function checkData(bytes calldata data) public view {
-
-    }
+    function checkData(bytes calldata data) public view {}
 
     function checkRouter(bytes calldata swapData) public view returns (address router) {
         /**
@@ -211,7 +207,9 @@ contract DevPlayground is Script {
     // 306 - 110 = 196
     function run() public view {
         // https://ethereum.stackexchange.com/questions/39989/solidity-convert-hex-string-to-bytes
-        bytes memory swapData = fromHex("0000000bd2c4c865c555c30a403ed4f4c94facf482af49447d8a07e3bd95bd0d56f35241523fbab1af88d065e77c8cc2239327c5edb3a432268e5831000bb8fd114cfd1d7c0170cbb871e8f30fc8ce23609e9e0ea87b6b222f58f332761c673b59b21ff6dfa8ada44d78c12def090d5f0e3b0000000000000000000198670000000bd2c4c865c555c30a403ed4f4c94facf40000000000000000000000000000000000000000000000000004beffc03716fe0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000010000000000000000000000006f38e884725a116c9c7fbf208e79fe8828a2595f");
+        bytes memory swapData = fromHex(
+            "0000000bd2c4c865c555c30a403ed4f4c94facf482af49447d8a07e3bd95bd0d56f35241523fbab1af88d065e77c8cc2239327c5edb3a432268e5831000bb8fd114cfd1d7c0170cbb871e8f30fc8ce23609e9e0ea87b6b222f58f332761c673b59b21ff6dfa8ada44d78c12def090d5f0e3b0000000000000000000198670000000bd2c4c865c555c30a403ed4f4c94facf40000000000000000000000000000000000000000000000000004beffc03716fe0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000010000000000000000000000006f38e884725a116c9c7fbf208e79fe8828a2595f"
+        );
         this.checkRouter(swapData);
     }
 }

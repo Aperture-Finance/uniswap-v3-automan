@@ -190,7 +190,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             amountOut = _poolSwap(poolKey, computeAddressSorted(poolKey), amountIn, zeroForOne);
         } else {
             address router = checkRouter(swapData);
-            amountOut = _routerSwapToOptimalRatio(poolKey, router, zeroForOne, swapData);
+            amountOut = _routerSwapFromTokenInToTokenOut(poolKey, router, zeroForOne, swapData);
         }
     }
 
@@ -355,7 +355,13 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             NPMCaller.decreaseLiquidity(npm, params);
         }
         // Collect the tokens owed and deduct gas and aperture fees.
-        (amount0, amount1) = _collectDeductFees(params.tokenId, pos.token0, pos.token1, token0FeeAmount, token1FeeAmount);
+        (amount0, amount1) = _collectDeductFees(
+            params.tokenId,
+            pos.token0,
+            pos.token1,
+            token0FeeAmount,
+            token1FeeAmount
+        );
         // Send the remaining amounts to the position owner
         address owner = NPMCaller.ownerOf(npm, params.tokenId);
         if (amount0 != 0) refund(pos.token0, owner, amount0, isUnwrapNative);
@@ -437,7 +443,15 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         bool isUnwrapNative
     ) private returns (uint256 amount) {
         SlipStreamPosition memory pos = _positions(params.tokenId);
-        amount = _decreaseCollectSingle(params, pos, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
+        amount = _decreaseCollectSingle(
+            params,
+            pos,
+            zeroForOne,
+            token0FeeAmount,
+            token1FeeAmount,
+            swapData,
+            isUnwrapNative
+        );
     }
 
     /// @dev Internal function to remove liquidity, collect tokens to this contract, and deduct fees
@@ -678,7 +692,14 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     ) external returns (uint256 amount) {
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
+        amount = _decreaseLiquiditySingle(
+            params,
+            zeroForOne,
+            token0FeeAmount,
+            token1FeeAmount,
+            swapData,
+            isUnwrapNative
+        );
         emit DecreaseLiquidity(tokenId);
     }
 
@@ -698,7 +719,14 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        amount = _decreaseLiquiditySingle(params, zeroForOne, token0FeeAmount, token1FeeAmount, swapData, isUnwrapNative);
+        amount = _decreaseLiquiditySingle(
+            params,
+            zeroForOne,
+            token0FeeAmount,
+            token1FeeAmount,
+            swapData,
+            isUnwrapNative
+        );
         emit DecreaseLiquidity(tokenId);
     }
 

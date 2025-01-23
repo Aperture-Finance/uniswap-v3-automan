@@ -58,6 +58,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     /// @param swapData The address of the external router and call data
     function checkRouter(bytes calldata swapData) internal view returns (address router) {
         assembly {
+            // Word size is 32 bytes, addresses are 20 bytes and left padded with zeros.
+            // Therefore, shift by 12 bytes = 96 bits to extract the 20 address bytes.
             router := shr(96, calldataload(swapData.offset))
         }
         if (!isWhiteListedSwapRouter[router]) revert NotWhitelistedRouter();
