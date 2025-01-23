@@ -192,10 +192,14 @@ contract UniV3AutomanTest is UniHandler {
         _decreaseLiquidity(tokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _decreaseLiquiditySingle(tokenId, 1, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+        // removeLiquidity has been deprecated for decreaseLiquidity with the position's liquidity to reduce confusion/redundancy.
+        // Test cases that uses _removeLiquidity disguised as _decreaseLiquidity doesn't revert because
+        // the very next call just checks the position's liquidity, which is successful and doesn't revert.
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _removeLiquidity(tokenId, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+        _decreaseLiquidity(tokenId, liquidity, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _removeLiquiditySingle(tokenId, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+        _decreaseLiquiditySingle(tokenId, liquidity, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _reinvest(tokenId, /* token0FeeAmount= */ 1e12, /* token1FeeAmount= */ 1e12);
         (tickLower, tickUpper) = prepTicks(0, 100);
