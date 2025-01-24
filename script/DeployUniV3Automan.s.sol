@@ -13,6 +13,7 @@ contract DeployUniV3Automan is Script {
         address controller;
         UniV3Automan.FeeConfig feeConfig;
         INPM npm;
+        address okxRouter;
         address owner;
     }
 
@@ -65,8 +66,8 @@ contract DeployUniV3Automan is Script {
             controllers[0] = params.controller;
             automan.setControllers(controllers, statuses);
             address[] memory swapRouters = new address[](1);
-            swapRouters[0] = address(automan);
-            automan.setSwapRouters(swapRouters, statuses);
+            swapRouters[0] = address(params.okxRouter);
+            automan.setAllowlistedRouters(swapRouters, statuses);
 
             // Transfer ownership to the owner
             automan.transferOwnership(params.owner);

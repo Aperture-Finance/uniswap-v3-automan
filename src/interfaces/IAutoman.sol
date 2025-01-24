@@ -8,16 +8,16 @@ import {IUniswapV3NonfungiblePositionManager as IUniV3NPM} from "@aperture_finan
 import {ISlipStreamNonfungiblePositionManager as ISlipStreamNPM} from "@aperture_finance/uni-v3-lib/src/interfaces/ISlipStreamNonfungiblePositionManager.sol";
 import {V3PoolCallee} from "@aperture_finance/uni-v3-lib/src/PoolCaller.sol";
 import {IPCSV3Immutables, IUniV3Immutables} from "./IImmutables.sol";
+import {ISwapRouterCommon} from "./ISwapRouter.sol";
 
 /// @title Interface for the Uniswap v3 Automation Manager
-interface IAutomanCommon {
+interface IAutomanCommon is ISwapRouterCommon {
     /************************************************
      *  EVENTS
      ***********************************************/
 
     event FeeConfigSet(address feeCollector, uint96 feeLimitPips);
     event ControllersSet(address[] controllers, bool[] statuses);
-    event SwapRoutersSet(address[] routers, bool[] statuses);
     event Mint(uint256 indexed tokenId);
     event IncreaseLiquidity(uint256 indexed tokenId);
     event DecreaseLiquidity(uint256 indexed tokenId);
@@ -30,8 +30,6 @@ interface IAutomanCommon {
      ***********************************************/
 
     error NotApproved();
-    error InvalidSwapRouter();
-    error NotWhitelistedRouter();
     error InsufficientAmount();
     error FeeLimitExceeded();
 
@@ -54,17 +52,6 @@ interface IAutomanCommon {
     /// @notice Check if an address is a controller
     /// @param addressToCheck The address to check
     function isController(address addressToCheck) external view returns (bool);
-
-    /// @notice Set whitelisted swap routers
-    /// @dev If `NonfungiblePositionManager` is a whitelisted router, this contract may approve arbitrary address to
-    /// spend NFTs it has been approved of.
-    /// @dev If an ERC20 token is whitelisted as a router, `transferFrom` may be called to drain tokens approved
-    /// to this contract during `mintOptimal` or `increaseLiquidityOptimal`.
-    /// @dev If a malicious router is whitelisted and called without slippage control, the caller may lose tokens in an
-    /// external swap. The router can't, however, drain ERC20 or ERC721 tokens which have been approved by other users
-    /// to this contract. Because this contract doesn't contain `transferFrom` with random `from` address like that in
-    /// SushiSwap's [`RouteProcessor2`](https://rekt.news/sushi-yoink-rekt/).
-    function setSwapRouters(address[] calldata routers, bool[] calldata statuses) external payable;
 
     /// @notice Get swap amount, output amount, swap direction for double-sided optimal deposit
     /// @param pool Uniswap v3 pool

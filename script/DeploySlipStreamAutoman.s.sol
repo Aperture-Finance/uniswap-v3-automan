@@ -12,7 +12,7 @@ contract DeploySlipStreamAutoman is Script {
         address controller;
         SlipStreamAutoman.FeeConfig feeConfig;
         INPM npm;
-        address optimalSwapRouter; // Deploy optimal swap router if parsed as address(0).
+        address okxRouter;
         address owner;
     }
 
@@ -45,29 +45,10 @@ contract DeploySlipStreamAutoman is Script {
         console.log("Deploying automan with params: %s", json);
         DeployParams memory params = abi.decode(vm.parseJson(json), (DeployParams));
 
-        // Conditionally deploy SlipStreamOptimalSwapRouter.
-        bytes memory initCode;
-        bytes32 initCodeHash;
-        if (params.optimalSwapRouter == address(0)) {
-            initCode = bytes.concat(type(SlipStreamOptimalSwapRouter).creationCode, abi.encode(params.npm));
-            initCodeHash = keccak256(initCode);
-            console2.log("OptimalSwapRouter initCodeHash:");
-            console2.logBytes32(initCodeHash);
-            SlipStreamOptimalSwapRouter optimalSwapRouter = SlipStreamOptimalSwapRouter(
-                payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash))
-            );
-            if (address(optimalSwapRouter).code.length == 0) {
-                // Deploy optimalSwapRouter
-                create2deployer.deploy(0, optimalSwapSalt, initCode);
-                console2.log("SlipStreamOptimalSwapRouter deployed at: %s", address(optimalSwapRouter));
-            }
-            params.optimalSwapRouter = address(optimalSwapRouter);
-        }
-
         // Deploy SlipStreamAutoman.
         bytes memory encodedArguments = abi.encode(params.npm, msgSender);
-        initCode = bytes.concat(type(SlipStreamAutoman).creationCode, encodedArguments);
-        initCodeHash = keccak256(initCode);
+        bytes memory initCode = bytes.concat(type(SlipStreamAutoman).creationCode, encodedArguments);
+        bytes32 initCodeHash = keccak256(initCode);
         console2.log("SlipStreamAutoman initCodeHash:");
         console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
@@ -86,8 +67,8 @@ contract DeploySlipStreamAutoman is Script {
             controllers[0] = params.controller;
             automan.setControllers(controllers, statuses);
             address[] memory swapRouters = new address[](1);
-            swapRouters[0] = params.optimalSwapRouter;
-            automan.setSwapRouters(swapRouters, statuses);
+            swapRouters[0] = address(params.okxRouter);
+            automan.setAllowlistedRouters(swapRouters, statuses);
 
             // Transfer ownership to the owner
             automan.transferOwnership(params.owner);

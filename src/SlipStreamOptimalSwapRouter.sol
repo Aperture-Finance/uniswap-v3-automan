@@ -8,7 +8,7 @@ contract SlipStreamOptimalSwapRouter is SlipStreamSwapRouter {
     using SafeTransferLib for address;
     using TernaryLib for bool;
 
-    constructor(ICommonNonfungiblePositionManager npm) payable UniV3Immutables(npm) {}
+    constructor(ICommonNonfungiblePositionManager npm, address owner_) payable Ownable(owner_) UniV3Immutables(npm) {}
 
     fallback() external {
         /**

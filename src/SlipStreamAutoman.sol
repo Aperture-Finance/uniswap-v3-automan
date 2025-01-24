@@ -32,8 +32,6 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
     FeeConfig public feeConfig;
     /// @notice The address list that can perform automation
     mapping(address => bool) public isController;
-    /// @notice The list of whitelisted routers
-    mapping(address => bool) public isWhiteListedSwapRouter;
 
     /************************************************
      *  ACCESS CONTROL
@@ -52,17 +50,6 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             uint256 feePips = feeAmount.mulDiv(MAX_FEE_PIPS, collectableAmount);
             if (feePips > feeConfig.feeLimitPips) revert FeeLimitExceeded();
         }
-    }
-
-    /// @dev Reverts if the router is not whitelisted
-    /// @param swapData The address of the external router and call data
-    function checkRouter(bytes calldata swapData) internal view returns (address router) {
-        assembly {
-            // Word size is 32 bytes, addresses are 20 bytes and left padded with zeros.
-            // Therefore, shift by 12 bytes = 96 bits to extract the 20 address bytes.
-            router := shr(96, calldataload(swapData.offset))
-        }
-        if (!isWhiteListedSwapRouter[router]) revert NotWhitelistedRouter();
     }
 
     /************************************************
@@ -88,37 +75,6 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             }
         }
         emit ControllersSet(controllers, statuses);
-    }
-
-    /// @notice Set whitelisted swap routers
-    /// @dev If `NonfungiblePositionManager` is a whitelisted router, this contract may approve arbitrary address to
-    /// spend NFTs it has been approved of.
-    /// @dev If an ERC20 token is whitelisted as a router, `transferFrom` may be called to drain tokens approved
-    /// to this contract during `mintOptimal` or `increaseLiquidityOptimal`.
-    /// @dev If a malicious router is whitelisted and called without slippage control, the caller may lose tokens in an
-    /// external swap. The router can't, however, drain ERC20 or ERC721 tokens which have been approved by other users
-    /// to this contract. Because this contract doesn't contain `transferFrom` with random `from` address like that in
-    /// SushiSwap's [`RouteProcessor2`](https://rekt.news/sushi-yoink-rekt/).
-    function setSwapRouters(address[] calldata routers, bool[] calldata statuses) external payable onlyOwner {
-        uint256 len = routers.length;
-        require(len == statuses.length);
-        unchecked {
-            for (uint256 i; i < len; ++i) {
-                address router = routers[i];
-                if (statuses[i]) {
-                    // revert if `router` is `NonfungiblePositionManager`
-                    if (router == address(npm)) revert InvalidSwapRouter();
-                    // revert if `router` is an ERC20 or not a contract
-                    //slither-disable-next-line reentrancy-no-eth
-                    (bool success, ) = router.call(abi.encodeCall(IERC20.approve, (address(npm), 0)));
-                    if (success) revert InvalidSwapRouter();
-                    isWhiteListedSwapRouter[router] = true;
-                } else {
-                    delete isWhiteListedSwapRouter[router];
-                }
-            }
-        }
-        emit SwapRoutersSet(routers, statuses);
     }
 
     /************************************************
@@ -189,8 +145,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         if (swapData.length == 0) {
             amountOut = _poolSwap(poolKey, computeAddressSorted(poolKey), amountIn, zeroForOne);
         } else {
-            address router = checkRouter(swapData);
-            amountOut = _routerSwapFromTokenInToTokenOut(poolKey, router, zeroForOne, swapData);
+            amountOut = _routerSwapFromTokenInToTokenOut(poolKey, zeroForOne, swapData);
         }
     }
 
@@ -215,10 +170,8 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             (amount0, amount1) = _optimalSwapWithPool(poolKey, tickLower, tickUpper, amount0Desired, amount1Desired);
         } else {
             // Swap with a whitelisted router
-            address router = checkRouter(swapData);
             (amount0, amount1) = _optimalSwapWithRouter(
                 poolKey,
-                router,
                 tickLower,
                 tickUpper,
                 amount0Desired,

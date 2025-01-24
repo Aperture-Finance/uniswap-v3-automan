@@ -19,7 +19,7 @@ contract OptimalSwapRouterTest is UniHandler {
     function setUp() public virtual override {
         super.setUp();
         automan = new UniV3Automan(npm, address(this));
-        optimalSwapRouter = address(new UniV3OptimalSwapRouter(npm));
+        optimalSwapRouter = address(new UniV3OptimalSwapRouter(npm, address(this)));
         setUpCommon();
     }
 
@@ -28,7 +28,7 @@ contract OptimalSwapRouterTest is UniHandler {
         routers[0] = optimalSwapRouter;
         bool[] memory statuses = new bool[](1);
         statuses[0] = true;
-        automan.setSwapRouters(routers, statuses);
+        automan.setAllowlistedRouters(routers, statuses);
 
         vm.label(address(automan), "UniV3Automan");
         vm.label(optimalSwapRouter, "OptimalSwapRouter");
@@ -160,7 +160,7 @@ contract PCSV3OptimalSwapRouterTest is OptimalSwapRouterTest {
         UniBase.setUp();
         IPCSV3NonfungiblePositionManager pcsnpm = IPCSV3NonfungiblePositionManager(address(npm));
         automan = new PCSV3Automan(pcsnpm, address(this));
-        optimalSwapRouter = address(new PCSV3OptimalSwapRouter(pcsnpm));
+        optimalSwapRouter = address(new PCSV3OptimalSwapRouter(pcsnpm, address(this)));
         setUpCommon();
     }
 }
@@ -171,7 +171,7 @@ contract SlipStreamOptimalSwapRouterTest is OptimalSwapRouterTest {
         dex = DEX.SlipStream;
         UniBase.setUp();
         automan = new SlipStreamAutoman(npm, address(this));
-        optimalSwapRouter = address(new SlipStreamOptimalSwapRouter(npm));
+        optimalSwapRouter = address(new SlipStreamOptimalSwapRouter(npm, address(this)));
         setUpCommon();
     }
 }

@@ -2,7 +2,10 @@
 pragma solidity ^0.8.18;
 
 import "solady/src/utils/SafeTransferLib.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20Callee} from "../libraries/ERC20Caller.sol";
+import {ISwapRouterCommon} from "../interfaces/ISwapRouter.sol";
 import "../libraries/SlipStreamPoolAddress.sol";
 import {PoolAddressPancakeSwapV3} from "@aperture_finance/uni-v3-lib/src/PoolAddressPancakeSwapV3.sol";
 import {TernaryLib} from "@aperture_finance/uni-v3-lib/src/TernaryLib.sol";
@@ -15,7 +18,7 @@ import "./Callback.sol";
 /// @author Aperture Finance
 /// @dev This router swaps through an aggregator to get to approximately the optimal ratio to add liquidity in a UniV3-style
 /// pool, then swaps the tokens to the optimal ratio to add liquidity in the same pool.
-abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
+abstract contract SlipStreamSwapRouter is Ownable, Payments, SlipStreamCallback, ISwapRouterCommon {
     using SafeTransferLib for address;
     using TernaryLib for bool;
     using TickMath for int24;
@@ -27,6 +30,40 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
     /// @dev Can't refer to `MAX_SQRT_RATIO_LESS_ONE` in the expression since we want to use `XOR_SQRT_RATIO` in assembly.
     uint160 internal constant XOR_SQRT_RATIO =
         (4295128739 + 1) ^ (1461446703485210103287273052203988822378723970342 - 1);
+
+    /// @notice The list of allowlisted routers
+    mapping(address => bool) public isAllowListedRouter;
+
+    /// @notice Set allowlisted routers
+    /// @dev If `NonfungiblePositionManager` is a whitelisted router, this contract may approve arbitrary address to
+    /// spend NFTs it has been approved of.
+    /// @dev If an ERC20 token is whitelisted as a router, `transferFrom` may be called to drain tokens approved
+    /// to this contract during `mintOptimal` or `increaseLiquidityOptimal`.
+    /// @dev If a malicious router is whitelisted and called without slippage control, the caller may lose tokens in an
+    /// external swap. The router can't, however, drain ERC20 or ERC721 tokens which have been approved by other users
+    /// to this contract. Because this contract doesn't contain `transferFrom` with random `from` address like that in
+    /// SushiSwap's [`RouteProcessor2`](https://rekt.news/sushi-yoink-rekt/).
+    function setAllowlistedRouters(address[] calldata routers, bool[] calldata statuses) external payable onlyOwner {
+        uint256 len = routers.length;
+        require(len == statuses.length);
+        unchecked {
+            for (uint256 i; i < len; ++i) {
+                address router = routers[i];
+                if (statuses[i]) {
+                    // revert if `router` is `NonfungiblePositionManager`
+                    if (router == address(npm)) revert InvalidRouter();
+                    // revert if `router` is an ERC20 or not a contract
+                    //slither-disable-next-line reentrancy-no-eth
+                    (bool success, ) = router.call(abi.encodeCall(IERC20.approve, (address(npm), 0)));
+                    if (success) revert InvalidRouter();
+                    isAllowListedRouter[router] = true;
+                } else {
+                    delete isAllowListedRouter[router];
+                }
+            }
+        }
+        emit SetAllowlistedRouters(routers, statuses);
+    }
 
     /// @notice Deterministically computes the pool address given the pool key
     /// @param poolKey The pool key
@@ -86,12 +123,40 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
         address router;
         bytes calldata data;
         assembly {
-            // For explanation, see around line 100 of src/base/SwapRouter.sol
+            /*
+            `swapData` is encoded as `abi.encodePacked(token0, token1, fee, tickLower, tickUpper, zeroForOne, approvalTarget, router, data)`
+            | Arg            | Offset     |
+            |----------------|------------|
+            | optimalSwapRtr | [  0,  20) |
+            | token0         | [ 20,  40) |
+            | token1         | [ 40,  60) |
+            | fee            | [ 60,  63) |
+            | tickLower      | [ 63,  66) |
+            | tickUpper      | [ 66,  69) |
+            | zeroForOne     | [ 69,  70) |
+            | approvalTarget | [ 70,  90) |
+            | router         | [ 90, 110) |
+            | data.offset    | [110,    ) |
+
+            Word sizes are 32 bytes, and addresses are 20 bytes, so need to shift right 12 bytes = 96 bits
+            Therefore, token0 := shr(96, calldataload(add(swapData.offset, 20))) 
+            20 bytes offset then shifting right 96 bits is the same as 20-96/8 = 8 bytes offset
+            Therefore,
+                token0 := calldataload(add(swapData.offset, 8))
+                token1 := calldataload(add(swapData.offset, 28))
+                fee := calldataload(add(swapData.offset, 31))
+                tickLower := calldataload(add(swapData.offset, 34))
+                tickUpper := calldataload(add(swapData.offset, 37))
+                zeroForOne := calldataload(add(swapData.offset, 38))
+                approvalTarget := calldataload(add(swapData.offset, 58))
+                router := calldataload(add(swapData.offset, 78))
+            */
             approvalTarget := calldataload(add(swapData.offset, 58))
             router := calldataload(add(swapData.offset, 78))
             data.length := sub(swapData.length, 110)
             data.offset := add(swapData.offset, 110)
         }
+        if (!isAllowListedRouter[router]) revert NotAllowlistedRouter();
         tokenIn.safeApprove(approvalTarget, type(uint256).max);
         assembly ("memory-safe") {
             let fmp := mload(0x40)
@@ -108,36 +173,17 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
 
     /// @dev Make an swap through a whitelisted external router from token in to token out
     /// @param poolKey The pool key containing the token addresses and fee tier
-    /// @param router The address of the external router
     /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
     /// @param swapData The address of the external router and call data, not abi-encoded
     /// @return amountOut The amount of token received after swap
     function _routerSwapFromTokenInToTokenOut(
         SlipStreamPoolAddress.PoolKey memory poolKey,
-        address router,
         bool zeroForOne,
         bytes calldata swapData
     ) internal returns (uint256 amountOut) {
         (address tokenIn, address tokenOut) = zeroForOne.switchIf(poolKey.token1, poolKey.token0);
         uint256 balanceBefore = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
-        if (router == address(this)) {
-            // If using Automan as OptimalSwapRouter
-            _routerSwapFromTokenInToTokenOutHelper(tokenIn, swapData);
-        } else {
-            // If using external router
-            assembly ("memory-safe") {
-                let fmp := mload(0x40)
-                // Strip the first 20 bytes of `swapData` which is the router address.
-                let calldataLength := sub(swapData.length, 20)
-                calldatacopy(fmp, add(swapData.offset, 20), calldataLength)
-                // Ignore the return data unless an error occurs
-                if iszero(call(gas(), router, 0, fmp, calldataLength, 0, 0)) {
-                    returndatacopy(0, 0, returndatasize())
-                    // Bubble up the revert reason.
-                    revert(0, returndatasize())
-                }
-            }
-        }
+        _routerSwapFromTokenInToTokenOutHelper(tokenIn, swapData);
         uint256 balanceAfter = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
         unchecked {
             amountOut = balanceAfter - balanceBefore;
@@ -153,6 +199,7 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
     ) internal {
         bool zeroForOne;
         assembly {
+            // Refer to around line 125 for explanation.
             zeroForOne := calldataload(add(swapData.offset, 38))
         }
 
@@ -169,6 +216,7 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
                 uint256 amount0Desired;
                 uint256 amount1Desired;
                 assembly {
+                    // Refer to around line 125 for explanation.
                     tickLower := calldataload(add(swapData.offset, 34))
                     tickUpper := calldataload(add(swapData.offset, 37))
                 }
@@ -197,48 +245,23 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
                 balance0 := add(balance0, xor(amountOut, diff))
                 balance1 := add(balance1, xor(minusAmountIn, diff))
             }
-            if (balance0 != 0) poolKey.token0.safeTransfer(msg.sender, balance0);
-            if (balance1 != 0) poolKey.token1.safeTransfer(msg.sender, balance1);
         }
     }
 
     /// @dev Make a swap through a whitelisted external router to optimal ratio.
     /// @param poolKey The pool key containing the token addresses and fee tier
-    /// @param router The address of the external router
     /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
     /// @param swapData The address of the external router and call data, not abi-encoded
     /// @return amountOut The amount of token received after swap
     function _routerSwapToOptimalRatio(
         SlipStreamPoolAddress.PoolKey memory poolKey,
-        address router,
         bool zeroForOne,
         bytes calldata swapData
     ) internal returns (uint256 amountOut) {
         (address tokenIn, address tokenOut) = zeroForOne.switchIf(poolKey.token1, poolKey.token0);
         uint256 balanceBefore = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
-        // Approve `router` to spend `tokenIn`
-        tokenIn.safeApprove(router, type(uint256).max);
-        if (router == address(this)) {
-            // If using Automan as OptimalSwapRouter
-            _routerSwapFromTokenInToTokenOutHelper(tokenIn, swapData);
-            _routerSwapToOptimalRatioHelper(poolKey, swapData);
-        } else {
-            // If using external router
-            assembly ("memory-safe") {
-                let fmp := mload(0x40)
-                // Strip the first 20 bytes of `swapData` which is the router address.
-                let calldataLength := sub(swapData.length, 20)
-                calldatacopy(fmp, add(swapData.offset, 20), calldataLength)
-                // Ignore the return data unless an error occurs
-                if iszero(call(gas(), router, 0, fmp, calldataLength, 0, 0)) {
-                    returndatacopy(0, 0, returndatasize())
-                    // Bubble up the revert reason.
-                    revert(0, returndatasize())
-                }
-            }
-        }
-        // Reset approval
-        tokenIn.safeApprove(router, 0);
+        _routerSwapFromTokenInToTokenOutHelper(tokenIn, swapData);
+        _routerSwapToOptimalRatioHelper(poolKey, swapData);
         uint256 balanceAfter = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
         unchecked {
             amountOut = balanceAfter - balanceBefore;
@@ -280,7 +303,6 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
 
     /// @dev Swap tokens to the optimal ratio to add liquidity with an external router
     /// @param poolKey The pool key containing the token addresses and fee tier
-    /// @param router The address of the external router
     /// @param tickLower The lower tick of the position in which to add liquidity
     /// @param tickUpper The upper tick of the position in which to add liquidity
     /// @param amount0Desired The desired amount of token0 to be spent
@@ -290,7 +312,6 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
     /// @return amount1 The amount of token1 after swap
     function _optimalSwapWithRouter(
         SlipStreamPoolAddress.PoolKey memory poolKey,
-        address router,
         int24 tickLower,
         int24 tickUpper,
         uint256 amount0Desired,
@@ -305,7 +326,7 @@ abstract contract SlipStreamSwapRouter is Payments, SlipStreamCallback {
             tickLower.getSqrtRatioAtTick(),
             tickUpper.getSqrtRatioAtTick()
         );
-        _routerSwapToOptimalRatio(poolKey, router, zeroForOne, swapData);
+        _routerSwapToOptimalRatio(poolKey, zeroForOne, swapData);
         amount0 = ERC20Callee.wrap(poolKey.token0).balanceOf(address(this));
         amount1 = ERC20Callee.wrap(poolKey.token1).balanceOf(address(this));
     }

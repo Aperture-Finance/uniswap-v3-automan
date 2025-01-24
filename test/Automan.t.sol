@@ -104,40 +104,13 @@ contract UniV3AutomanTest is UniHandler {
         }
     }
 
-    /************************************************
-     *  ACCESS CONTROL TESTS
-     ***********************************************/
-
-    /// @dev Should revert if attempting to set NPM as router
-    function testRevert_WhitelistNPMAsRouter() public {
-        address[] memory routers = new address[](1);
-        routers[0] = address(npm);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
-        automan.setSwapRouters(routers, statuses);
-    }
-
-    /// @dev Should revert if attempting to set an ERC20 token as router
-    function testRevert_WhitelistERC20AsRouter() public {
-        address[] memory routers = new address[](1);
-        routers[0] = address(WETH);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
-        automan.setSwapRouters(routers, statuses);
-        routers[0] = address(USDC);
-        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
-        automan.setSwapRouters(routers, statuses);
-    }
-
-    /// @dev Should revert if the router is not whitelisted
-    function testRevert_NotWhitelistedRouter() public {
+    /// @dev Should revert if the router is not allowlisted
+    function testRevert_NotAllowlistedRouter() public {
         (uint256 amount0Desired, uint256 amount1Desired, int24 tickLower, int24 tickUpper) = fixedInputs();
         deal(amount0Desired, amount1Desired);
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
-        vm.expectRevert(IAutomanCommon.NotWhitelistedRouter.selector);
+        vm.expectRevert(ISwapRouterCommon.NotAllowlistedRouter.selector);
         if (dex == DEX.SlipStream) {
             IAutomanSlipStreamMintRebalance(address(automan)).mintOptimal(
                 ISlipStreamNPM.MintParams({
