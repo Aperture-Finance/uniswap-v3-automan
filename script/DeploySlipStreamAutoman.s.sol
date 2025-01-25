@@ -9,6 +9,7 @@ import {SlipStreamAutoman} from "../src/SlipStreamAutoman.sol";
 contract DeploySlipStreamAutoman is Script {
     struct DeployParams {
         // Has to be alphabetically ordered per https://book.getfoundry.sh/cheatcodes/parse-json
+        bytes32 automanSalt;
         address controller;
         SlipStreamAutoman.FeeConfig feeConfig;
         INPM npm;
@@ -18,8 +19,6 @@ contract DeploySlipStreamAutoman is Script {
 
     // https://github.com/pcaversaccio/create2deployer
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
-    bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112efe83ae4286e4a037c0300a0;
-    bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112ebdfde3902472dbfc10c0000;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
     function readInput(string memory input) internal view returns (string memory) {
@@ -53,11 +52,11 @@ contract DeploySlipStreamAutoman is Script {
         console2.logBytes32(initCodeHash);
         // Compute the address of the contract to be deployed
         SlipStreamAutoman automan = SlipStreamAutoman(
-            payable(create2deployer.computeAddress(automanSalt, initCodeHash))
+            payable(create2deployer.computeAddress(params.automanSalt, initCodeHash))
         );
         if (address(automan).code.length == 0) {
             // Deploy automan
-            create2deployer.deploy(0, automanSalt, initCode);
+            create2deployer.deploy(0, params.automanSalt, initCode);
 
             // Set up automan
             automan.setFeeConfig(params.feeConfig);
