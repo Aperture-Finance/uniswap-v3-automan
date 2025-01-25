@@ -8,11 +8,11 @@ interface ISwapRouterCommon {
     error NotAllowlistedRouter();
 
     /// @notice Set allowlisted routers
-    /// @dev If `NonfungiblePositionManager` is a whitelisted router, this contract may approve arbitrary address to
+    /// @dev If `NonfungiblePositionManager` is an allowlisted router, this contract may approve arbitrary address to
     /// spend NFTs it has been approved of.
-    /// @dev If an ERC20 token is whitelisted as a router, `transferFrom` may be called to drain tokens approved
+    /// @dev If an ERC20 token is allowlisted as a router, `transferFrom` may be called to drain tokens approved
     /// to this contract during `mintOptimal` or `increaseLiquidityOptimal`.
-    /// @dev If a malicious router is whitelisted and called without slippage control, the caller may lose tokens in an
+    /// @dev If a malicious router is allowlisted and called without slippage control, the caller may lose tokens in an
     /// external swap. The router can't, however, drain ERC20 or ERC721 tokens which have been approved by other users
     /// to this contract. Because this contract doesn't contain `transferFrom` with random `from` address like that in
     /// SushiSwap's [`RouteProcessor2`](https://rekt.news/sushi-yoink-rekt/).

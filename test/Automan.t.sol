@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// FOUNDRY_PROFILE=lite forge test --watch --match-contract=Automan -vvvvv
+// FOUNDRY_PROFILE=lite forge test --match-contract=Automan -vvvvv
 pragma solidity ^0.8.0;
 
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";

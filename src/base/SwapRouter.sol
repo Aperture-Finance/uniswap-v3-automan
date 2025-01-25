@@ -36,11 +36,11 @@ abstract contract SwapRouter is Ownable, Payments, ISwapRouterCommon {
     mapping(address => bool) public isAllowListedRouter;
 
     /// @notice Set allowlisted routers
-    /// @dev If `NonfungiblePositionManager` is a whitelisted router, this contract may approve arbitrary address to
+    /// @dev If `NonfungiblePositionManager` is an allowlisted router, this contract may approve arbitrary address to
     /// spend NFTs it has been approved of.
-    /// @dev If an ERC20 token is whitelisted as a router, `transferFrom` may be called to drain tokens approved
+    /// @dev If an ERC20 token is allowlisted as a router, `transferFrom` may be called to drain tokens approved
     /// to this contract during `mintOptimal` or `increaseLiquidityOptimal`.
-    /// @dev If a malicious router is whitelisted and called without slippage control, the caller may lose tokens in an
+    /// @dev If a malicious router is allowlisted and called without slippage control, the caller may lose tokens in an
     /// external swap. The router can't, however, drain ERC20 or ERC721 tokens which have been approved by other users
     /// to this contract. Because this contract doesn't contain `transferFrom` with random `from` address like that in
     /// SushiSwap's [`RouteProcessor2`](https://rekt.news/sushi-yoink-rekt/).
@@ -114,7 +114,7 @@ abstract contract SwapRouter is Ownable, Payments, ISwapRouterCommon {
         }
     }
 
-    /// @dev Make an swap through a whitelisted external router from token in to token out
+    /// @dev Make an swap through an allowlisted external router from token in to token out
     /// @param tokenIn The address of the token to be swapped
     /// @param swapData The address of the external router and call data, not abi-encoded
     function _routerSwapFromTokenInToTokenOutHelper(address tokenIn, bytes calldata swapData) internal {
@@ -140,15 +140,16 @@ abstract contract SwapRouter is Ownable, Payments, ISwapRouterCommon {
             Word sizes are 32 bytes, and addresses are 20 bytes, so need to shift right 12 bytes = 96 bits
             Therefore, token0 := shr(96, calldataload(add(swapData.offset, 20))) 
             20 bytes offset then shifting right 96 bits is the same as 20-96/8 = 8 bytes offset
+            However, int24 and bool are interpreted differently, so the bit shifting is required.
             Therefore,
-                token0 := calldataload(add(swapData.offset, 8))
-                token1 := calldataload(add(swapData.offset, 28))
-                fee := calldataload(add(swapData.offset, 31))
-                tickLower := calldataload(add(swapData.offset, 34))
-                tickUpper := calldataload(add(swapData.offset, 37))
-                zeroForOne := calldataload(add(swapData.offset, 38))
-                approvalTarget := calldataload(add(swapData.offset, 58))
-                router := calldataload(add(swapData.offset, 78))
+                token0 := shr(96, calldataload(add(swapData.offset, 20))) == calldataload(add(swapData.offset, 8))
+                token1 := shr(96, calldataload(add(swapData.offset, 40))) == calldataload(add(swapData.offset, 28))
+                fee := shr(232, calldataload(add(swapData.offset, 60)))
+                tickLower := sar(232, calldataload(add(swapData.offset, 63)))
+                tickUpper := sar(232, calldataload(add(swapData.offset, 66)))
+                zeroForOne := shr(248, calldataload(add(swapData.offset, 69)))
+                approvalTarget := shr(96, calldataload(add(swapData.offset, 70))) == calldataload(add(swapData.offset, 58))
+                router := shr(96, calldataload(add(swapData.offset, 90))) == calldataload(add(swapData.offset, 78))
             */
             approvalTarget := calldataload(add(swapData.offset, 58))
             router := calldataload(add(swapData.offset, 78))
@@ -170,7 +171,7 @@ abstract contract SwapRouter is Ownable, Payments, ISwapRouterCommon {
         tokenIn.safeApprove(approvalTarget, 0);
     }
 
-    /// @dev Make an swap through a whitelisted external router from token in to token out
+    /// @dev Make an swap through an allowlisted external router from token in to token out
     /// @param poolKey The pool key containing the token addresses and fee tier
     /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
     /// @param swapData The address of the external router and call data, not abi-encoded
@@ -189,14 +190,14 @@ abstract contract SwapRouter is Ownable, Payments, ISwapRouterCommon {
         }
     }
 
-    /// @dev Make an swap through a whitelisted external router to optimal ratio.
+    /// @dev Make an swap through an allowlisted external router to optimal ratio.
     /// @param poolKey The pool key containing the token addresses and fee tier
     /// @param swapData The address of the external router and call data, not abi-encoded
     function _routerSwapToOptimalRatioHelper(PoolKey memory poolKey, bytes calldata swapData) internal {
         bool zeroForOne;
         assembly {
             // Refer to around line 125 for explanation.
-            zeroForOne := calldataload(add(swapData.offset, 38))
+            zeroForOne := shr(248, calldataload(add(swapData.offset, 69)))
         }
 
         // swap tokens to the optimal ratio to add liquidity in the same pool
@@ -213,8 +214,8 @@ abstract contract SwapRouter is Ownable, Payments, ISwapRouterCommon {
                 uint256 amount1Desired;
                 assembly {
                     // Refer to around line 125 for explanation.
-                    tickLower := calldataload(add(swapData.offset, 34))
-                    tickUpper := calldataload(add(swapData.offset, 37))
+                    tickLower := sar(232, calldataload(add(swapData.offset, 63)))
+                    tickUpper := sar(232, calldataload(add(swapData.offset, 66)))
                 }
                 // take into account the balance not pulled from the sender
                 if (zeroForOne) {
@@ -244,7 +245,7 @@ abstract contract SwapRouter is Ownable, Payments, ISwapRouterCommon {
         }
     }
 
-    /// @dev Make a swap through a whitelisted external router to optimal ratio.
+    /// @dev Make a swap through an allowlisted external router to optimal ratio.
     /// @param poolKey The pool key containing the token addresses and fee tier
     /// @param zeroForOne The direction of the swap, true for token0 to token1, false for token1 to token0
     /// @param swapData The address of the external router and call data, not abi-encoded

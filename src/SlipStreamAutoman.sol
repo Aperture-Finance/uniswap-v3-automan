@@ -169,7 +169,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             // Swap with the v3 pool directly
             (amount0, amount1) = _optimalSwapWithPool(poolKey, tickLower, tickUpper, amount0Desired, amount1Desired);
         } else {
-            // Swap with a whitelisted router
+            // Swap with an allowlisted router
             (amount0, amount1) = _optimalSwapWithRouter(
                 poolKey,
                 tickLower,
