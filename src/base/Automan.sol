@@ -468,16 +468,6 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         PoolKey memory poolKey = castPoolKey(pos);
         uint256 amount0;
         uint256 amount1;
-        {
-            // Calculate the principal amounts
-            (uint160 sqrtPriceX96, ) = V3PoolCallee.wrap(computeAddressSorted(poolKey)).sqrtPriceX96AndTick();
-            LiquidityAmounts.getAmountsForLiquidity(
-                sqrtPriceX96,
-                pos.tickLower.getSqrtRatioAtTick(),
-                pos.tickUpper.getSqrtRatioAtTick(),
-                pos.liquidity
-            );
-        }
         // Collect the tokens owed then deduct gas and aperture fees
         (amount0, amount1) = _collectDeductFees(
             params.tokenId,
