@@ -4,6 +4,7 @@
   "author": "Aperture Finance",
   "license": "BUSL-1.1",
   "scripts": {
+    "build": "forge build",
     "compile": "forge build",
     "size": "forge build --sizes",
     "test": "forge test",

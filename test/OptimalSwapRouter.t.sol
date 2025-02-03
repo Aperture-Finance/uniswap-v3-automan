@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// FOUNDRY_PROFILE=lite forge test --match-path=test/OptimalSwapRouter.t.sol -vvvvv
 pragma solidity ^0.8.0;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
@@ -19,16 +20,16 @@ contract OptimalSwapRouterTest is UniHandler {
     function setUp() public virtual override {
         super.setUp();
         automan = new UniV3Automan(npm, address(this));
-        optimalSwapRouter = address(new UniV3OptimalSwapRouter(npm));
+        optimalSwapRouter = address(new UniV3OptimalSwapRouter(npm, address(this)));
         setUpCommon();
     }
 
     function setUpCommon() internal {
         address[] memory routers = new address[](1);
-        routers[0] = optimalSwapRouter;
+        routers[0] = v3SwapRouter;
         bool[] memory statuses = new bool[](1);
         statuses[0] = true;
-        automan.setSwapRouters(routers, statuses);
+        automan.setAllowlistedRouters(routers, statuses);
 
         vm.label(address(automan), "UniV3Automan");
         vm.label(optimalSwapRouter, "OptimalSwapRouter");
@@ -75,16 +76,16 @@ contract OptimalSwapRouterTest is UniHandler {
         uint256 snapshotId = vm.snapshot();
 
         (, uint128 liquidity) = _mintOptimal(
-            address(this),
+            /* recipient= */ address(this),
             tickLower,
             tickUpper,
             amount0Desired,
             amount1Desired,
-            encodeRouterData(tickLower, tickUpper, zeroForOne, amtSwap)
+            encodeRouterData(address(automan), tickLower, tickUpper, zeroForOne, amtSwap)
         );
         vm.assume(liquidity != 0);
         assertLittleLeftover();
-        assertZeroBalance(optimalSwapRouter);
+        assertZeroBalance(address(automan));
 
         // Skip comparison with same-pool swap for SlipStream on Base because the swap router is set to PCSV3 on Base which doesn't have good liquidity.
         // There is no deployed SwapRouter contract for UniV3 or SlipStream on Base.
@@ -92,7 +93,7 @@ contract OptimalSwapRouterTest is UniHandler {
 
         vm.revertTo(snapshotId);
         (, uint128 _liquidity) = _mintOptimal(
-            address(this),
+            /* recipient= */ address(this),
             tickLower,
             tickUpper,
             amount0Desired,
@@ -104,6 +105,7 @@ contract OptimalSwapRouterTest is UniHandler {
     }
 
     function encodeRouterData(
+        address recipient,
         int24 tickLower,
         int24 tickUpper,
         bool zeroForOne,
@@ -116,7 +118,7 @@ contract OptimalSwapRouterTest is UniHandler {
                 tokenIn: tokenIn,
                 tokenOut: tokenOut,
                 fee: fee,
-                recipient: optimalSwapRouter,
+                recipient: recipient,
                 deadline: block.timestamp,
                 amountIn: amountIn,
                 amountOutMinimum: 0,
@@ -160,7 +162,7 @@ contract PCSV3OptimalSwapRouterTest is OptimalSwapRouterTest {
         UniBase.setUp();
         IPCSV3NonfungiblePositionManager pcsnpm = IPCSV3NonfungiblePositionManager(address(npm));
         automan = new PCSV3Automan(pcsnpm, address(this));
-        optimalSwapRouter = address(new PCSV3OptimalSwapRouter(pcsnpm));
+        optimalSwapRouter = address(new PCSV3OptimalSwapRouter(pcsnpm, address(this)));
         setUpCommon();
     }
 }
@@ -171,7 +173,7 @@ contract SlipStreamOptimalSwapRouterTest is OptimalSwapRouterTest {
         dex = DEX.SlipStream;
         UniBase.setUp();
         automan = new SlipStreamAutoman(npm, address(this));
-        optimalSwapRouter = address(new SlipStreamOptimalSwapRouter(npm));
+        optimalSwapRouter = address(new SlipStreamOptimalSwapRouter(npm, address(this)));
         setUpCommon();
     }
 }

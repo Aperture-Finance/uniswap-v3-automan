@@ -8,16 +8,16 @@ import {IUniswapV3NonfungiblePositionManager as IUniV3NPM} from "@aperture_finan
 import {ISlipStreamNonfungiblePositionManager as ISlipStreamNPM} from "@aperture_finance/uni-v3-lib/src/interfaces/ISlipStreamNonfungiblePositionManager.sol";
 import {V3PoolCallee} from "@aperture_finance/uni-v3-lib/src/PoolCaller.sol";
 import {IPCSV3Immutables, IUniV3Immutables} from "./IImmutables.sol";
+import {ISwapRouterCommon} from "./ISwapRouter.sol";
 
 /// @title Interface for the Uniswap v3 Automation Manager
-interface IAutomanCommon {
+interface IAutomanCommon is ISwapRouterCommon {
     /************************************************
      *  EVENTS
      ***********************************************/
 
     event FeeConfigSet(address feeCollector, uint96 feeLimitPips);
     event ControllersSet(address[] controllers, bool[] statuses);
-    event SwapRoutersSet(address[] routers, bool[] statuses);
     event Mint(uint256 indexed tokenId);
     event IncreaseLiquidity(uint256 indexed tokenId);
     event DecreaseLiquidity(uint256 indexed tokenId);
@@ -30,8 +30,6 @@ interface IAutomanCommon {
      ***********************************************/
 
     error NotApproved();
-    error InvalidSwapRouter();
-    error NotWhitelistedRouter();
     error InsufficientAmount();
     error FeeLimitExceeded();
 
@@ -54,17 +52,6 @@ interface IAutomanCommon {
     /// @notice Check if an address is a controller
     /// @param addressToCheck The address to check
     function isController(address addressToCheck) external view returns (bool);
-
-    /// @notice Set whitelisted swap routers
-    /// @dev If `NonfungiblePositionManager` is a whitelisted router, this contract may approve arbitrary address to
-    /// spend NFTs it has been approved of.
-    /// @dev If an ERC20 token is whitelisted as a router, `transferFrom` may be called to drain tokens approved
-    /// to this contract during `mintOptimal` or `increaseLiquidityOptimal`.
-    /// @dev If a malicious router is whitelisted and called without slippage control, the caller may lose tokens in an
-    /// external swap. The router can't, however, drain ERC20 or ERC721 tokens which have been approved by other users
-    /// to this contract. Because this contract doesn't contain `transferFrom` with random `from` address like that in
-    /// SushiSwap's [`RouteProcessor2`](https://rekt.news/sushi-yoink-rekt/).
-    function setSwapRouters(address[] calldata routers, bool[] calldata statuses) external payable;
 
     /// @notice Get swap amount, output amount, swap direction for double-sided optimal deposit
     /// @param pool Uniswap v3 pool
@@ -130,12 +117,14 @@ interface IAutomanCommon {
     /// deadline The time by which the transaction must be included to effect the change
     /// @param token0FeeAmount The amount of token0 to send to feeCollector
     /// @param token1FeeAmount The amount of token1 to send to feeCollector
+    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
     /// @return amount0 The amount of token0 returned minus fees
     /// @return amount1 The amount of token1 returned minus fees
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
         uint256 token0FeeAmount,
-        uint256 token1FeeAmount
+        uint256 token1FeeAmount,
+        bool isUnwrapNative
     ) external returns (uint256 amount0, uint256 amount1);
 
     /// @notice Decreases the amount of liquidity in a position and accounts it to the position using permit
@@ -148,6 +137,7 @@ interface IAutomanCommon {
     /// deadline The time by which the transaction must be included to effect the change
     /// @param token0FeeAmount The amount of token0 to send to feeCollector
     /// @param token1FeeAmount The amount of token1 to send to feeCollector
+    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
     /// @param r Half of the ECDSA signature pair
@@ -158,6 +148,7 @@ interface IAutomanCommon {
         INPM.DecreaseLiquidityParams memory params,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
+        bool isUnwrapNative,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
@@ -176,13 +167,15 @@ interface IAutomanCommon {
     /// @param token0FeeAmount The amount of token0 to send to feeCollector
     /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
+    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
     /// @return amount The total amount of desired token returned minus fees
     function decreaseLiquiditySingle(
         INPM.DecreaseLiquidityParams memory params,
         bool zeroForOne,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
-        bytes calldata swapData
+        bytes calldata swapData,
+        bool isUnwrapNative
     ) external returns (uint256 amount);
 
     /// @notice Decreases the amount of liquidity in a position and swaps to a single token using permit
@@ -197,6 +190,7 @@ interface IAutomanCommon {
     /// @param token0FeeAmount The amount of token0 to send to feeCollector
     /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
+    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
     /// @param r Half of the ECDSA signature pair
@@ -208,96 +202,7 @@ interface IAutomanCommon {
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
         bytes calldata swapData,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external returns (uint256 amount);
-
-    /// @notice Removes all liquidity from a position
-    /// @dev Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
-    /// It is applied on the principal amounts excluding trading fees.
-    /// @param params tokenId The ID of the token for which liquidity is being removed,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @return amount0 The amount of token0 returned minus fees
-    /// @return amount1 The amount of token1 returned minus fees
-    function removeLiquidity(
-        INPM.DecreaseLiquidityParams memory params,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount
-    ) external returns (uint256 amount0, uint256 amount1);
-
-    /// @notice Removes all liquidity from a position using permit
-    /// @dev Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
-    /// It is applied on the principal amounts excluding trading fees.
-    /// @param params tokenId The ID of the token for which liquidity is being removed,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param permitDeadline The deadline of the permit signature
-    /// @param v The recovery byte of the signature
-    /// @param r Half of the ECDSA signature pair
-    /// @param s Half of the ECDSA signature pair
-    /// @return amount0 The amount of token0 returned minus fees
-    /// @return amount1 The amount of token1 returned minus fees
-    function removeLiquidity(
-        INPM.DecreaseLiquidityParams memory params,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external returns (uint256 amount0, uint256 amount1);
-
-    /// @notice Removes all liquidity from a position and swaps to a single token
-    /// @dev Slippage check is enforced by specifying `amount0Min` when `token0` is the target token
-    /// and `amount1Min` otherwise, applied after transaction fees.
-    /// @param params tokenId The ID of the token for which liquidity is being removed,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @param zeroForOne True if token0 is being swapped for token1, false otherwise
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param swapData The address of the external router and call data
-    /// @return amount The total amount of desired token returned minus fees
-    function removeLiquiditySingle(
-        INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData
-    ) external returns (uint256 amount);
-
-    /// @notice Removes all liquidity from a position and swaps to a single token using permit
-    /// @dev Slippage check is enforced by specifying `amount0Min` when `token0` is the target token
-    /// and `amount1Min` otherwise, applied after transaction fees.
-    /// @param params tokenId The ID of the token for which liquidity is being removed,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @param zeroForOne True if token0 is being swapped for token1, false otherwise
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param swapData The address of the external router and call data
-    /// @param permitDeadline The deadline of the permit signature
-    /// @param v The recovery byte of the signature
-    /// @param r Half of the ECDSA signature pair
-    /// @param s Half of the ECDSA signature pair
-    /// @return amount The total amount of desired token returned minus fees
-    function removeLiquiditySingle(
-        INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData,
+        bool isUnwrapNative,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
