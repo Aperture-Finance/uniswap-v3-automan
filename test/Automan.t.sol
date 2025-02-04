@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-// FOUNDRY_PROFILE=lite forge test --watch --match-contract=Automan -vvvvv
+// FOUNDRY_PROFILE=lite forge test --match-contract=Automan -vvvvv
 pragma solidity ^0.8.0;
 
 import {IUniswapV3Factory} from "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
@@ -104,40 +104,13 @@ contract UniV3AutomanTest is UniHandler {
         }
     }
 
-    /************************************************
-     *  ACCESS CONTROL TESTS
-     ***********************************************/
-
-    /// @dev Should revert if attempting to set NPM as router
-    function testRevert_WhitelistNPMAsRouter() public {
-        address[] memory routers = new address[](1);
-        routers[0] = address(npm);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
-        automan.setSwapRouters(routers, statuses);
-    }
-
-    /// @dev Should revert if attempting to set an ERC20 token as router
-    function testRevert_WhitelistERC20AsRouter() public {
-        address[] memory routers = new address[](1);
-        routers[0] = address(WETH);
-        bool[] memory statuses = new bool[](1);
-        statuses[0] = true;
-        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
-        automan.setSwapRouters(routers, statuses);
-        routers[0] = address(USDC);
-        vm.expectRevert(IAutomanCommon.InvalidSwapRouter.selector);
-        automan.setSwapRouters(routers, statuses);
-    }
-
-    /// @dev Should revert if the router is not whitelisted
-    function testRevert_NotWhitelistedRouter() public {
+    /// @dev Should revert if the router is not allowlisted
+    function testRevert_NotAllowlistedRouter() public {
         (uint256 amount0Desired, uint256 amount1Desired, int24 tickLower, int24 tickUpper) = fixedInputs();
         deal(amount0Desired, amount1Desired);
         token0.safeApprove(address(automan), type(uint256).max);
         token1.safeApprove(address(automan), type(uint256).max);
-        vm.expectRevert(IAutomanCommon.NotWhitelistedRouter.selector);
+        vm.expectRevert(ISwapRouterCommon.NotAllowlistedRouter.selector);
         if (dex == DEX.SlipStream) {
             IAutomanSlipStreamMintRebalance(address(automan)).mintOptimal(
                 ISlipStreamNPM.MintParams({
@@ -192,10 +165,14 @@ contract UniV3AutomanTest is UniHandler {
         _decreaseLiquidity(tokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _decreaseLiquiditySingle(tokenId, 1, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+        // removeLiquidity has been deprecated for decreaseLiquidity with the position's liquidity to reduce confusion/redundancy.
+        // Test cases that uses _removeLiquidity disguised as _decreaseLiquidity doesn't revert because
+        // the very next call just checks the position's liquidity, which is successful and doesn't revert.
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _removeLiquidity(tokenId, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+        _decreaseLiquidity(tokenId, liquidity, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _removeLiquiditySingle(tokenId, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+        _decreaseLiquiditySingle(tokenId, liquidity, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _reinvest(tokenId, /* token0FeeAmount= */ 1e12, /* token1FeeAmount= */ 1e12);
         (tickLower, tickUpper) = prepTicks(0, 100);
@@ -450,6 +427,7 @@ contract UniV3AutomanTest is UniHandler {
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
             /* token0FeeAmount= */ 0,
             /* token1FeeAmount= */ 0,
+            /* isUnwrapNative= */ true,
             deadline,
             v,
             r,
@@ -492,6 +470,7 @@ contract UniV3AutomanTest is UniHandler {
             /* token0FeeAmount= */ 0,
             /* token1FeeAmount= */ 0,
             new bytes(0),
+            /* isUnwrapNative= */ true,
             deadline,
             v,
             r,
@@ -526,16 +505,18 @@ contract UniV3AutomanTest is UniHandler {
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
         uint256 gasBefore = gasleft();
-        (uint256 amount0, uint256 amount1) = automan.removeLiquidity(
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
+        (uint256 amount0, uint256 amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
-                liquidity: 0,
+                liquidity: liquidity,
                 amount0Min: 0,
                 amount1Min: 0,
                 deadline: deadline
             }),
             /* token0FeeAmount= */ 0,
             /* token1FeeAmount= */ 0,
+            /* isUnwrapNative= */ true,
             deadline,
             v,
             r,
@@ -571,10 +552,11 @@ contract UniV3AutomanTest is UniHandler {
         uint256 tokenId = thisTokenId;
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
-        automan.removeLiquiditySingle(
+        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
+        automan.decreaseLiquiditySingle(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
-                liquidity: 0,
+                liquidity: liquidity,
                 amount0Min: 0,
                 amount1Min: 0,
                 deadline: deadline
@@ -583,6 +565,7 @@ contract UniV3AutomanTest is UniHandler {
             /* token0FeeAmount= */ 0,
             /* token1FeeAmount= */ 0,
             new bytes(0),
+            /* isUnwrapNative= */ true,
             deadline,
             v,
             r,

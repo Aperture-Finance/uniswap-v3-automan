@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// FOUNDRY_PROFILE=lite forge test --match-path=test/uniswap/OptimalSwap.t.sol -vvvvv
 pragma solidity ^0.8.0;
 
 import "forge-std/Test.sol";

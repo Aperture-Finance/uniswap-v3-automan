@@ -43,8 +43,9 @@ abstract contract Payments is Immutables {
     /// @param token The token to pay
     /// @param recipient The address that will receive the payment
     /// @param value The amount to pay
-    function refund(address token, address recipient, uint256 value) internal {
-        if (token == WETH9) {
+    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
+    function refund(address token, address recipient, uint256 value, bool isUnwrapNative) internal {
+        if (token == WETH9 && isUnwrapNative) {
             // Unwrap WETH
             WETHCallee.wrap(WETH9).withdraw(value);
             // Send native ETH to recipient
