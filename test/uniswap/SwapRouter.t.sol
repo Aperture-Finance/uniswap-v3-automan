@@ -190,7 +190,7 @@ contract SwapRouterTest is UniBase {
     //     bytes calldata routerData,
     //     bytes calldata swapData
     // ) public {
-    //     /* 
+    //     /*
     //         optimalSwapRouter := shr(96, calldataload(add(swapData.offset, 0))) == calldataload(sub(swapData.offset, 12))
     //         token0 := shr(96, calldataload(add(swapData.offset, 20))) == calldataload(add(swapData.offset, 8))
     //         token1 := shr(96, calldataload(add(swapData.offset, 40))) == calldataload(add(swapData.offset, 28))
