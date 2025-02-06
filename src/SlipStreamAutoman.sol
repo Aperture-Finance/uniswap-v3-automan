@@ -569,7 +569,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(params.token1, tokenIn);
             amount1 = _swapFromTokenInToTokenOut(poolKey, params.amount1Desired, zeroForOne, swapData1);
         }
-        // After using tokenIn to swap for the other pair, handle amounts if tokenIn is a token pair, 
+        // After using tokenIn to swap for the other pair, handle amounts if tokenIn is a token pair.
         if (params.token0 == tokenIn) amount0 = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
         if (params.token1 == tokenIn) amount1 = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
         // Perform optimal swap, which updates the amountsDesired.
