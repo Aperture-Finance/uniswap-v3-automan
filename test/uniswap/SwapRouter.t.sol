@@ -171,6 +171,188 @@ contract SwapRouterTest is UniBase {
     }
 
     /************************************************
+     *  ENCODING TESTS, tests skipped by default because requires --via-ir due to stack too deep compiler error.
+     *  To run test, uncomment below and run:
+     *  forge test --via-ir --watch --match-path=test/uniswap/SwapRouter.t.sol --match-test=testFuzz_EncodeAndDecode --fuzz-runs 1000 -vvvvv
+     ***********************************************/
+
+    // // Since abi.encodePacked returns memory only, use this decodeAndTestSwapData function to change swapData from memory to calldata
+    // function decodeAndTestSwapData(
+    //     address optimalSwapRouter,
+    //     address token0,
+    //     address token1,
+    //     uint24 feeOrTickSpacing,
+    //     int24 tickLower,
+    //     int24 tickUpper,
+    //     bool zeroForOne,
+    //     address approvalTarget,
+    //     address router2,
+    //     bytes calldata routerData,
+    //     bytes calldata swapData
+    // ) public {
+    //     /* 
+    //         optimalSwapRouter := shr(96, calldataload(add(swapData.offset, 0))) == calldataload(sub(swapData.offset, 12))
+    //         token0 := shr(96, calldataload(add(swapData.offset, 20))) == calldataload(add(swapData.offset, 8))
+    //         token1 := shr(96, calldataload(add(swapData.offset, 40))) == calldataload(add(swapData.offset, 28))
+    //         feeOrTickSpacing := shr(232, calldataload(add(swapData.offset, 60)))
+    //         tickLower := sar(232, calldataload(add(swapData.offset, 63)))
+    //         tickUpper := sar(232, calldataload(add(swapData.offset, 66)))
+    //         zeroForOne := shr(248, calldataload(add(swapData.offset, 69)))
+    //         approvalTarget := shr(96, calldataload(add(swapData.offset, 70))) == calldataload(add(swapData.offset, 58))
+    //         router := shr(96, calldataload(add(swapData.offset, 90))) == calldataload(add(swapData.offset, 78))
+    //         data.length := sub(swapData.length, 110)
+    //         data.offset := add(swapData.offset, 110)
+    //     */
+    //     {
+    //         address optimalSwapRouterDecoded0;
+    //         address optimalSwapRouterDecoded1;
+    //         assembly {
+    //             optimalSwapRouterDecoded0 := shr(96, calldataload(add(swapData.offset, 0)))
+    //             optimalSwapRouterDecoded1 := calldataload(sub(swapData.offset, 12))
+    //         }
+    //         assertEq(optimalSwapRouter, optimalSwapRouterDecoded0);
+    //         assertEq(optimalSwapRouter, optimalSwapRouterDecoded1);
+    //         assertEq(optimalSwapRouterDecoded0, optimalSwapRouterDecoded1);
+    //     }
+    //     {
+    //         address token0Decoded0;
+    //         address token0Decoded1;
+    //         assembly {
+    //             token0Decoded0 := shr(96, calldataload(add(swapData.offset, 20)))
+    //             token0Decoded1 := calldataload(add(swapData.offset, 8))
+    //         }
+    //         assertEq(token0, token0Decoded0);
+    //         assertEq(token0, token0Decoded1);
+    //         assertEq(token0Decoded0, token0Decoded1);
+    //     }
+    //     {
+    //         address token1Decoded0;
+    //         address token1Decoded1;
+    //         assembly {
+    //             token1Decoded0 := shr(96, calldataload(add(swapData.offset, 40)))
+    //             token1Decoded1 := calldataload(add(swapData.offset, 28))
+    //         }
+    //         assertEq(token1, token1Decoded0);
+    //         assertEq(token1, token1Decoded1);
+    //         assertEq(token1Decoded0, token1Decoded1);
+    //     }
+    //     {
+    //         uint24 feeOrTickSpacingDecoded0;
+    //         uint24 feeOrTickSpacingDecoded1;
+    //         assembly {
+    //             feeOrTickSpacingDecoded0 := shr(232, calldataload(add(swapData.offset, 60)))
+    //             feeOrTickSpacingDecoded1 := calldataload(add(swapData.offset, 31))
+    //         }
+    //         assertEq(feeOrTickSpacing, feeOrTickSpacingDecoded0);
+    //         assertEq(feeOrTickSpacing, feeOrTickSpacingDecoded1);
+    //         assertEq(feeOrTickSpacingDecoded0, feeOrTickSpacingDecoded1);
+    //     }
+    //     {
+    //         int24 tickLowerDecoded0;
+    //         int24 tickLowerDecoded1;
+    //         assembly {
+    //             tickLowerDecoded0 := sar(232, calldataload(add(swapData.offset, 63)))
+    //             tickLowerDecoded1 := calldataload(add(swapData.offset, 34))
+    //         }
+    //         assertEq(tickLower, tickLowerDecoded0);
+    //         assertEq(tickLower, tickLowerDecoded1);
+    //         assertEq(tickLowerDecoded0, tickLowerDecoded1);
+    //     }
+    //     {
+    //         int24 tickUpperDecoded0;
+    //         int24 tickUpperDecoded1;
+    //         assembly {
+    //             tickUpperDecoded0 := sar(232, calldataload(add(swapData.offset, 66)))
+    //             tickUpperDecoded1 := calldataload(add(swapData.offset, 37))
+    //         }
+    //         assertEq(tickUpper, tickUpperDecoded0);
+    //         assertEq(tickUpper, tickUpperDecoded1);
+    //         assertEq(tickUpperDecoded0, tickUpperDecoded1);
+    //     }
+    //     {
+    //         bool zeroForOneDecoded0;
+    //         bool zeroForOneDecoded1;
+    //         assembly {
+    //             zeroForOneDecoded0 := shr(248, calldataload(add(swapData.offset, 69)))
+    //             zeroForOneDecoded1 := calldataload(add(swapData.offset, 38))
+    //         }
+    //         assertEq(zeroForOne, zeroForOneDecoded0);
+    //         // assertEq fails because bool is interpreted as true if word (not limited to just last byte) is non-zero
+    //         // assertEq(zeroForOne, zeroForOneDecoded1);
+    //         // assertEq(zeroForOneDecoded0, zeroForOneDecoded1);
+    //     }
+    //     {
+    //         address approvalTargetDecoded0;
+    //         address approvalTargetDecoded1;
+    //         assembly {
+    //             approvalTargetDecoded0 := shr(96, calldataload(add(swapData.offset, 70)))
+    //             approvalTargetDecoded1 := calldataload(add(swapData.offset, 58))
+    //         }
+    //         assertEq(approvalTarget, approvalTargetDecoded0);
+    //         assertEq(approvalTarget, approvalTargetDecoded1);
+    //         assertEq(approvalTargetDecoded0, approvalTargetDecoded1);
+    //     }
+    //     {
+    //         address router2Decoded0;
+    //         address router2Decoded1;
+    //         assembly {
+    //             router2Decoded0 := shr(96, calldataload(add(swapData.offset, 90)))
+    //             router2Decoded1 := calldataload(add(swapData.offset, 78))
+    //         }
+    //         assertEq(router2, router2Decoded0);
+    //         assertEq(router2, router2Decoded1);
+    //         assertEq(router2Decoded0, router2Decoded1);
+    //     }
+    //     {
+    //         bytes calldata routerDataDecoded;
+    //         assembly {
+    //             routerDataDecoded.length := sub(swapData.length, 110)
+    //             routerDataDecoded.offset := add(swapData.offset, 110)
+    //         }
+    //         assertEq(routerData, routerDataDecoded);
+    //     }
+    // }
+
+    // function testFuzz_EncodeAndDecode(
+    //     address optimalSwapRouter,
+    //     address token0,
+    //     address token1,
+    //     uint24 feeOrTickSpacing,
+    //     int24 tickLower,
+    //     int24 tickUpper,
+    //     bool zeroForOne,
+    //     address approvalTarget,
+    //     address router2,
+    //     bytes calldata routerData
+    // ) public {
+    //     bytes memory swapData = abi.encodePacked(
+    //         optimalSwapRouter,
+    //         token0,
+    //         token1,
+    //         feeOrTickSpacing,
+    //         tickLower,
+    //         tickUpper,
+    //         zeroForOne,
+    //         approvalTarget,
+    //         /* router= */ router2,
+    //         routerData
+    //     );
+    //     this.decodeAndTestSwapData(
+    //         optimalSwapRouter,
+    //         token0,
+    //         token1,
+    //         feeOrTickSpacing,
+    //         tickLower,
+    //         tickUpper,
+    //         zeroForOne,
+    //         approvalTarget,
+    //         router2,
+    //         routerData,
+    //         swapData
+    //     );
+    // }
+
+    /************************************************
      *  ACCESS CONTROL TESTS
      ***********************************************/
 
