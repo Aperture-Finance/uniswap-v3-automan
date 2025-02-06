@@ -6,6 +6,6 @@
     "feeCollector": "0x3D37E9E5Ff12c3ebBdFace34f0a1FD7A42c856ED"
   },
   "controller": "0x40725D97f5352dfBf749de29ed328Ac6189e51A9",
-  "automanSalt": "0xbeef63ae5a2102506e8a352a5bb32aa8b30b31126c4bd9f1e8840e5fd1020088",
+  "automanSalt": "0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112e2943cb90081d3318a010090",
   "okxRouter": "0x6b2C0c7be2048Daa9b5527982C29f48062B34D58"
 }
