@@ -492,7 +492,6 @@ interface IAutomanSlipStreamMintRebalance {
         uint256 token1FeeAmount
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
-
     /// @notice Creates a new position wrapped in a NFT using a single tokenIn.
     /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
     /// a method does not exist, i.e. the pool is assumed to be initialized.
