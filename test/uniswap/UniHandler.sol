@@ -316,12 +316,33 @@ contract UniHandler is UniBase {
         uint256 token0FeeAmount,
         uint256 token1FeeAmount
     ) internal returns (uint256 amount) {
-        amount = automan.decreaseLiquiditySingle(
-            INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
-            zeroForOne,
-            token0FeeAmount,
-            token1FeeAmount,
-            new bytes(0),
+        (, , address token0, address token1, , , , , , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
+        amount = automan.decreaseLiquidityToTokenOut(
+            // amountMins are used as feeAmounts due to stack too deep compiler error.
+            INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, token0FeeAmount, token1FeeAmount, block.timestamp),
+            /* tokenOut= */ zeroForOne ? token1 : token0,
+            /* tokenOutMin= */ 0,
+            /* swapData0= */ new bytes(0),
+            /* swapData1= */ new bytes(0),
+            /* isUnwrapNative= */ true
+        );
+    }
+
+    /// @dev Decrease liquidity of a v3 LP position and withdrawing a single token
+    function _decreaseLiquidityToTokenOut(
+        uint256 tokenId,
+        uint128 liquidityDelta,
+        address tokenOut,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount
+    ) internal returns (uint256 amount) {
+        amount = automan.decreaseLiquidityToTokenOut(
+            // amountMins are used as feeAmounts due to stack too deep compiler error.
+            INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, token0FeeAmount, token1FeeAmount, block.timestamp),
+            tokenOut,
+            /* tokenOutMin= */ 0,
+            /* swapData0= */ new bytes(0),
+            /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true
         );
     }
@@ -354,19 +375,22 @@ contract UniHandler is UniBase {
         uint256 token0FeeAmount,
         uint256 token1FeeAmount
     ) internal returns (uint256 amount) {
-        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
-        amount = automan.decreaseLiquiditySingle(
+        (, , address token0, address token1, , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(
+            tokenId
+        );
+        amount = automan.decreaseLiquidityToTokenOut(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
                 liquidity: liquidity,
-                amount0Min: 0,
-                amount1Min: 0,
+                // amountMins are used as feeAmounts due to stack too deep compiler error.
+                amount0Min: token0FeeAmount,
+                amount1Min: token1FeeAmount,
                 deadline: block.timestamp
             }),
-            zeroForOne,
-            token0FeeAmount,
-            token1FeeAmount,
-            new bytes(0),
+            /* tokenOut= */ zeroForOne ? token1 : token0,
+            /* tokenOutMin= */ 0,
+            /* swapData0= */ new bytes(0),
+            /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true
         );
     }

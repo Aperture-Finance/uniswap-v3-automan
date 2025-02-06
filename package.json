@@ -6,6 +6,7 @@
   "scripts": {
     "build": "forge build",
     "compile": "forge build",
+    "lint": "prettier -w {script,src,test}/**/*.sol",
     "size": "forge build --sizes",
     "test": "forge test",
     "snapshot": "forge snapshot --isolate",

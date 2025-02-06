@@ -157,6 +157,7 @@ contract UniV3AutomanTest is UniHandler {
     function testRevert_NotAuthorizedForToken() public {
         uint256 tokenId = thisTokenId;
         (, , int24 tickLower, int24 tickUpper) = fixedInputs();
+        (, , address token0, address token1, , , , , , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         npm.approve(address(automan), tokenId);
         // `user` is not the owner or controller.
         assertTrue(!automan.isController(user));
@@ -164,7 +165,7 @@ contract UniV3AutomanTest is UniHandler {
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _decreaseLiquidity(tokenId, 1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _decreaseLiquiditySingle(tokenId, 1, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+        _decreaseLiquidityToTokenOut(tokenId, 1, token1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         // removeLiquidity has been deprecated for decreaseLiquidity with the position's liquidity to reduce confusion/redundancy.
         // Test cases that uses _removeLiquidity disguised as _decreaseLiquidity doesn't revert because
         // the very next call just checks the position's liquidity, which is successful and doesn't revert.
@@ -172,7 +173,9 @@ contract UniV3AutomanTest is UniHandler {
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _decreaseLiquidity(tokenId, liquidity, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
-        _decreaseLiquiditySingle(tokenId, liquidity, true, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
+        // Likewise, _decreaseLiquiditySingle also doesn't revert because the very next
+        // call retrieves token0 and token1, which is successful and doesn't revert.
+        _decreaseLiquidityToTokenOut(tokenId, liquidity, token1, /* token0FeeAmount= */ 0, /* token1FeeAmount= */ 0);
         vm.expectRevert(IAutomanCommon.NotApproved.selector);
         _reinvest(tokenId, /* token0FeeAmount= */ 1e12, /* token1FeeAmount= */ 1e12);
         (tickLower, tickUpper) = prepTicks(0, 100);
@@ -458,18 +461,21 @@ contract UniV3AutomanTest is UniHandler {
     }
 
     /// @dev Decreasing liquidity with permit
-    function testFuzz_DecreaseLiquiditySingle_WithPermit(uint128 liquidityDesired, bool zeroForOne) public {
+    function testFuzz_DecreaseLiquiditySingl2e_WithPermit(uint128 liquidityDesired, bool zeroForOne) public {
         uint256 tokenId = thisTokenId;
-        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
+        (, , address token0, address token1, , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(
+            tokenId
+        );
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
-        automan.decreaseLiquiditySingle(
+        automan.decreaseLiquidityToTokenOut(
+            // amountMins are used as feeAmounts due to stack too deep compiler error.
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
-            zeroForOne,
-            /* token0FeeAmount= */ 0,
-            /* token1FeeAmount= */ 0,
-            new bytes(0),
+            /* tokenOut= */ zeroForOne ? token1 : token0,
+            /* tokenOutMin= */ 0,
+            /* swapData0= */ new bytes(0),
+            /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true,
             deadline,
             v,
@@ -552,19 +558,22 @@ contract UniV3AutomanTest is UniHandler {
         uint256 tokenId = thisTokenId;
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
-        (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
-        automan.decreaseLiquiditySingle(
+        (, , address token0, address token1, , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(
+            tokenId
+        );
+        automan.decreaseLiquidityToTokenOut(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
                 liquidity: liquidity,
-                amount0Min: 0,
-                amount1Min: 0,
+                // amountMins are used as feeAmounts due to stack too deep compiler error.
+                amount0Min: /* token0FeeAmount= */ 0,
+                amount1Min: /* token1FeeAmount= */ 0,
                 deadline: deadline
             }),
-            zeroForOne,
-            /* token0FeeAmount= */ 0,
-            /* token1FeeAmount= */ 0,
-            new bytes(0),
+            /* tokenOut= */ zeroForOne ? token1 : token0,
+            /* tokenOutMin= */ 0,
+            /* swapData0= */ new bytes(0),
+            /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true,
             deadline,
             v,

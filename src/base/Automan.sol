@@ -14,6 +14,7 @@ import {PoolKey} from "@aperture_finance/uni-v3-lib/src/PoolKey.sol";
 import {SwapRouter} from "./SwapRouter.sol";
 import {IAutomanCommon, IAutomanUniV3MintRebalance} from "../interfaces/IAutoman.sol";
 import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "../libraries/OptimalSwap.sol";
+import {TernaryLib} from "@aperture_finance/uni-v3-lib/src/TernaryLib.sol";
 
 /// @title Automation manager for UniV3-like liquidity positions with built-in optimal swap algorithm
 /// @author Aperture Finance
@@ -22,6 +23,7 @@ import {FullMath, OptimalSwap, TickMath, V3PoolCallee} from "../libraries/Optima
 abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3MintRebalance {
     using SafeTransferLib for address;
     using FullMath for uint256;
+    using TernaryLib for bool;
     using TickMath for int24;
 
     uint256 internal constant MAX_FEE_PIPS = 1e18;
@@ -58,7 +60,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
 
     /// @notice Set the fee limit and collector
     /// @param _feeConfig The new fee configuration
-    function setFeeConfig(FeeConfig calldata _feeConfig) external payable onlyOwner {
+    function setFeeConfig(FeeConfig calldata _feeConfig) external onlyOwner {
         require(_feeConfig.feeLimitPips < MAX_FEE_PIPS);
         require(_feeConfig.feeCollector != address(0));
         feeConfig = _feeConfig;
@@ -66,7 +68,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     }
 
     /// @notice Set addresses that can perform automation
-    function setControllers(address[] calldata controllers, bool[] calldata statuses) external payable onlyOwner {
+    function setControllers(address[] calldata controllers, bool[] calldata statuses) external onlyOwner {
         uint256 len = controllers.length;
         require(len == statuses.length);
         unchecked {
@@ -227,15 +229,16 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         (liquidity, amount0, amount1) = NPMCaller.increaseLiquidity(npm, params);
         uint256 amount0Desired = params.amount0Desired;
         uint256 amount1Desired = params.amount1Desired;
-        // Refund any surplus value to the caller
+        // Refund any surplus value to the owner
         unchecked {
+            address owner = NPMCaller.ownerOf(npm, params.tokenId);
             if (amount0 < amount0Desired) {
                 token0.safeApprove(address(npm), 0);
-                refund(token0, msg.sender, amount0Desired - amount0, /* isUnwrapNative= */ true);
+                refund(token0, owner, amount0Desired - amount0, /* isUnwrapNative= */ true);
             }
             if (amount1 < amount1Desired) {
                 token1.safeApprove(address(npm), 0);
-                refund(token1, msg.sender, amount1Desired - amount1, /* isUnwrapNative= */ true);
+                refund(token1, owner, amount1Desired - amount1, /* isUnwrapNative= */ true);
             }
         }
     }
@@ -321,86 +324,66 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         }
     }
 
-    /// @dev Decrease liquidity and swap the tokens to a single token
-    function _decreaseCollectSingle(
+    /// @dev Internal decrease liquidity and swap to a single token abstraction
+    function _decreaseLiquidityToTokenOut(
         INPM.DecreaseLiquidityParams memory params,
-        Position memory pos,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData,
+        address tokenOut,
+        uint256 tokenOutMin,
+        bytes calldata swapData0,
+        bytes calldata swapData1,
         bool isUnwrapNative
-    ) private returns (uint256 amount) {
-        uint256 amountMin;
-        // Slippage check is done here instead of `NonfungiblePositionManager`
-        if (zeroForOne) {
-            amountMin = params.amount1Min;
-            params.amount1Min = 0;
-        } else {
-            amountMin = params.amount0Min;
-            params.amount0Min = 0;
-        }
+    ) private returns (uint256 tokenOutAmount) {
+        Position memory position = _positions(params.tokenId);
+        // amountMins are used as feeAmounts due to stack too deep compiler error.
+        // slippage check done at the end of this function instead of NPM call,
+        // so save the feeAmounts and clear the slippage checks.
+        (uint256 amount0, uint256 amount1) = (params.amount0Min, params.amount1Min);
+        (params.amount0Min, params.amount1Min) = (0, 0);
         // Optionally collect without decreasing liquidity.
         if (params.liquidity != 0) {
-            // Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
             NPMCaller.decreaseLiquidity(npm, params);
         }
         // Collect the tokens owed and deduct gas and aperture fees.
-        uint256 tokenId = params.tokenId;
-        (uint256 amount0, uint256 amount1) = _collectDeductFees(
-            tokenId,
-            pos.token0,
-            pos.token1,
-            token0FeeAmount,
-            token1FeeAmount
+        (amount0, amount1) = _collectDeductFees(
+            params.tokenId,
+            position.token0,
+            position.token1,
+            /* token0FeeAmount= */ amount0,
+            /* token1FeeAmount= */ amount1
         );
-        // Swap to the desired token and send it to the position owner
-        // Refund any unswapped amount back to the position owner.
-        address owner = NPMCaller.ownerOf(npm, tokenId);
         unchecked {
-            uint256 amountRefund;
-            if (zeroForOne) {
-                amount = amount1 + _swapFromTokenInToTokenOut(castPoolKey(pos), amount0, true, swapData);
-                refund(pos.token1, owner, amount, isUnwrapNative);
-                amountRefund = ERC20Callee.wrap(pos.token0).balanceOf(address(this));
-                if (amountRefund != 0) {
-                    refund(pos.token0, owner, amountRefund, isUnwrapNative);
-                }
-            } else {
-                amount = amount0 + _swapFromTokenInToTokenOut(castPoolKey(pos), amount1, false, swapData);
-                refund(pos.token0, owner, amount, isUnwrapNative);
-                amountRefund = ERC20Callee.wrap(pos.token1).balanceOf(address(this));
-                if (amountRefund != 0) {
-                    refund(pos.token1, owner, amountRefund, isUnwrapNative);
+            PoolKey memory poolKey;
+            poolKey.fee = position.fee;
+            address owner = NPMCaller.ownerOf(npm, params.tokenId);
+            // Swap token0 for tokenOut, and refund any unswapped token0 to the owner.
+            if (position.token0 != tokenOut) {
+                bool zeroForOne = position.token0 < tokenOut;
+                (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(tokenOut, position.token0);
+                _swapFromTokenInToTokenOut(poolKey, amount0, zeroForOne, swapData0);
+                uint256 token0Refund = ERC20Callee.wrap(position.token0).balanceOf(address(this));
+                if (token0Refund != 0) {
+                    refund(position.token0, owner, token0Refund, isUnwrapNative);
                 }
             }
+            // Swap token1 for tokenOut, and refund any unswapped token1 to the owner.
+            if (position.token1 != tokenOut) {
+                bool zeroForOne = position.token1 < tokenOut;
+                (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(tokenOut, position.token1);
+                _swapFromTokenInToTokenOut(poolKey, amount1, zeroForOne, swapData1);
+                uint256 token1Refund = ERC20Callee.wrap(position.token1).balanceOf(address(this));
+                if (token1Refund != 0) {
+                    refund(position.token1, owner, token1Refund, isUnwrapNative);
+                }
+            }
+            // Send tokenOut to the owner.
+            tokenOutAmount = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
+            refund(tokenOut, owner, tokenOutAmount, isUnwrapNative);
         }
-        if (amount < amountMin) revert InsufficientAmount();
-        if (params.liquidity == pos.liquidity) {
+        if (tokenOutAmount < tokenOutMin) revert InsufficientAmount();
+        if (params.liquidity == position.liquidity) {
             // Burn token when removing all liquidity.
-            _burn(tokenId);
+            _burn(params.tokenId);
         }
-    }
-
-    /// @dev Internal decrease liquidity abstraction
-    function _decreaseLiquiditySingle(
-        INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData,
-        bool isUnwrapNative
-    ) private returns (uint256 amount) {
-        Position memory pos = _positions(params.tokenId);
-        amount = _decreaseCollectSingle(
-            params,
-            pos,
-            zeroForOne,
-            token0FeeAmount,
-            token1FeeAmount,
-            swapData,
-            isUnwrapNative
-        );
     }
 
     /// @dev Internal function to remove liquidity, collect tokens to this contract, and deduct fees
@@ -439,7 +422,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             token0FeeAmount,
             token1FeeAmount
         );
-        // Perform optimal swap and update `params`
+        // Perform optimal swap, which updates the amountsDesired and approves npm to spend.
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             poolKey,
             pos.tickLower,
@@ -473,7 +456,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         );
         // Update `recipient` to the current owner
         params.recipient = NPMCaller.ownerOf(npm, tokenId);
-        // Perform optimal swap
+        // Perform optimal swap, which updates the amountsDesired and approves npm to spend.
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             castPoolKey(params),
             params.tickLower,
@@ -533,7 +516,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         );
         params.amount0Desired -= token0FeeAmount;
         params.amount1Desired -= token1FeeAmount;
-        // Perform optimal swap after which the amounts desired are updated
+        // Perform optimal swap, which updates the amountsDesired and approves npm to spend.
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             poolKey,
             params.tickLower,
@@ -543,6 +526,68 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             swapData
         );
         (tokenId, liquidity, amount0, amount1) = _mint(params);
+        emit Mint(tokenId);
+    }
+
+    function mintWithTokenIn(
+        IUniV3NPM.MintParams memory params,
+        // params.amount0Desired = The amount of tokenIn to swap for token0
+        // params.amount1Desired = The amount of tokenIn to swap for token1
+        address tokenIn,
+        uint256 tokenInFeeAmount, // The amount of tokenIn to send to feeCollector
+        bytes calldata swapData0,
+        bytes calldata swapData1
+    ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1) {
+        // Pull tokens
+        {
+            uint256 tokenInTotal = params.amount0Desired + params.amount1Desired + tokenInFeeAmount;
+            if (tokenInFeeAmount != 0) pay(tokenIn, msg.sender, address(this), tokenInTotal);
+            // Collect zap-in fees, calculations outside mulDiv won't overflow.
+            unchecked {
+                checkFeeSanity(tokenInFeeAmount, tokenInTotal);
+                address _feeCollector = feeConfig.feeCollector;
+                if (tokenInFeeAmount != 0) {
+                    refund(tokenIn, _feeCollector, tokenInFeeAmount, /* isUnwrapNative= */ true);
+                }
+            }
+        }
+        PoolKey memory poolKey;
+        poolKey.fee = params.fee;
+        // Swap tokenIn for token0.
+        if (params.token0 != tokenIn) {
+            bool zeroForOne = tokenIn < params.token0;
+            (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(params.token0, tokenIn);
+            amount0 = _swapFromTokenInToTokenOut(poolKey, params.amount0Desired, zeroForOne, swapData0);
+        }
+        // Swap tokenIn for token1.
+        if (params.token1 != tokenIn) {
+            bool zeroForOne = tokenIn < params.token1;
+            (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(params.token1, tokenIn);
+            amount1 = _swapFromTokenInToTokenOut(poolKey, params.amount1Desired, zeroForOne, swapData1);
+        }
+        // After using tokenIn to swap for the other pair, handle amounts if tokenIn is a token pair, 
+        if (params.token0 == tokenIn) amount0 = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
+        if (params.token1 == tokenIn) amount1 = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
+        // Perform optimal swap, which updates the amountsDesired.
+        (poolKey.token0, poolKey.token1) = (params.token0, params.token1);
+        (params.amount0Desired, params.amount1Desired) = _optimalSwapWithPool(
+            poolKey,
+            params.tickLower,
+            params.tickUpper,
+            amount0,
+            amount1
+        );
+        // Approve npm to spend & mint.
+        if (params.amount0Desired != 0) poolKey.token0.safeApprove(address(npm), params.amount0Desired);
+        if (params.amount1Desired != 0) poolKey.token1.safeApprove(address(npm), params.amount1Desired);
+        (tokenId, liquidity, amount0, amount1) = _mint(params);
+        // Refund any unswapped tokenIn to the recipient.
+        unchecked {
+            uint256 tokenInRefundAmount = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
+            if (tokenInRefundAmount != 0) {
+                refund(tokenIn, params.recipient, tokenInRefundAmount, /* isUnwrapNative= */ true);
+            }
+        }
         emit Mint(tokenId);
     }
 
@@ -576,7 +621,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         _deductFees(token0, token1, params.amount0Desired, params.amount1Desired, token0FeeAmount, token1FeeAmount);
         params.amount0Desired -= token0FeeAmount;
         params.amount1Desired -= token1FeeAmount;
-        // Perform optimal swap after which the amounts desired are updated
+        // Perform optimal swap, which updates the amountsDesired and approves npm to spend.
         (params.amount0Desired, params.amount1Desired) = _optimalSwap(
             castPoolKey(pos),
             pos.tickLower,
@@ -586,6 +631,70 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             swapData
         );
         (liquidity, amount0, amount1) = _increaseLiquidity(params, token0, token1);
+        emit IncreaseLiquidity(params.tokenId);
+    }
+
+    function increaseLiquidityWithTokenIn(
+        IUniV3NPM.IncreaseLiquidityParams memory params,
+        // params.amount0Desired = The amount of tokenIn to swap for token0
+        // params.amount1Desired = The amount of tokenIn to swap for token1
+        address tokenIn,
+        uint256 tokenInFeeAmount, // The amount of tokenIn to send to feeCollector
+        bytes calldata swapData0,
+        bytes calldata swapData1
+    ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1) {
+        // Pull tokens
+        {
+            uint256 tokenInTotal = params.amount0Desired + params.amount1Desired + tokenInFeeAmount;
+            if (tokenInFeeAmount != 0) pay(tokenIn, msg.sender, address(this), tokenInTotal);
+            // Collect zap-in fees, calculations outside mulDiv won't overflow.
+            unchecked {
+                checkFeeSanity(tokenInFeeAmount, tokenInTotal);
+                address _feeCollector = feeConfig.feeCollector;
+                if (tokenInFeeAmount != 0) {
+                    refund(tokenIn, _feeCollector, tokenInFeeAmount, /* isUnwrapNative= */ true);
+                }
+            }
+        }
+        Position memory position = _positions(params.tokenId);
+        PoolKey memory poolKey;
+        poolKey.fee = position.fee;
+        // Swap tokenIn for token0.
+        if (position.token0 != tokenIn) {
+            bool zeroForOne = tokenIn < position.token0;
+            (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(position.token0, tokenIn);
+            amount0 = _swapFromTokenInToTokenOut(poolKey, params.amount0Desired, zeroForOne, swapData0);
+        }
+        // Swap tokenIn for token1.
+        if (position.token1 != tokenIn) {
+            bool zeroForOne = tokenIn < position.token1;
+            (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(position.token1, tokenIn);
+            amount1 = _swapFromTokenInToTokenOut(poolKey, params.amount1Desired, zeroForOne, swapData1);
+        }
+        // After using tokenIn to swap for the other pair, handle amounts if tokenIn is a token pair, 
+        if (position.token0 == tokenIn) amount0 = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
+        if (position.token1 == tokenIn) amount1 = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
+        // Perform optimal swap, which updates the amountsDesired.
+        (poolKey.token0, poolKey.token1) = (position.token0, position.token1);
+        (params.amount0Desired, params.amount1Desired) = _optimalSwapWithPool(
+            poolKey,
+            position.tickLower,
+            position.tickUpper,
+            amount0,
+            amount1
+        );
+        // Approve npm to spend & increaseLiquidity.
+        if (params.amount0Desired != 0) poolKey.token0.safeApprove(address(npm), params.amount0Desired);
+        if (params.amount1Desired != 0) poolKey.token1.safeApprove(address(npm), params.amount1Desired);
+        (liquidity, amount0, amount1) = _increaseLiquidity(params, position.token0, position.token1);
+        // Refund any unswapped tokenIn to the owner.
+        unchecked {
+            uint256 tokenInRefundAmount = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
+            if (tokenInRefundAmount != 0) {
+                address owner = NPMCaller.ownerOf(npm, params.tokenId);
+                refund(tokenIn, owner, tokenInRefundAmount, /* isUnwrapNative= */ true);
+            }
+        }
         emit IncreaseLiquidity(params.tokenId);
     }
 
@@ -621,49 +730,49 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     }
 
     /// @inheritdoc IAutomanCommon
-    function decreaseLiquiditySingle(
+    function decreaseLiquidityToTokenOut(
         INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData,
+        address tokenOut,
+        uint256 tokenOutMin,
+        bytes calldata swapData0,
+        bytes calldata swapData1,
         bool isUnwrapNative
-    ) external returns (uint256 amount) {
+    ) external returns (uint256 tokenOutAmount) {
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        amount = _decreaseLiquiditySingle(
+        tokenOutAmount = _decreaseLiquidityToTokenOut(
             params,
-            zeroForOne,
-            token0FeeAmount,
-            token1FeeAmount,
-            swapData,
+            tokenOut,
+            tokenOutMin,
+            swapData0,
+            swapData1,
             isUnwrapNative
         );
         emit DecreaseLiquidity(tokenId);
     }
 
     /// @inheritdoc IAutomanCommon
-    function decreaseLiquiditySingle(
+    function decreaseLiquidityToTokenOut(
         INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData,
+        address tokenOut,
+        uint256 tokenOutMin,
+        bytes calldata swapData0,
+        bytes calldata swapData1,
         bool isUnwrapNative,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 amount) {
+    ) external returns (uint256 tokenOutAmount) {
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
         selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
-        amount = _decreaseLiquiditySingle(
+        tokenOutAmount = _decreaseLiquidityToTokenOut(
             params,
-            zeroForOne,
-            token0FeeAmount,
-            token1FeeAmount,
-            swapData,
+            tokenOut,
+            tokenOutMin,
+            swapData0,
+            swapData1,
             isUnwrapNative
         );
         emit DecreaseLiquidity(tokenId);
