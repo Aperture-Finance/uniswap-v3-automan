@@ -6,13 +6,13 @@
   "scripts": {
     "build": "forge build",
     "compile": "forge build",
-    "lint": "prettier -w {script,src,test}/**/*.sol",
+    "lint": "prettier -w {script,src,test}/{,**/,**/**/}*.sol",
     "size": "forge build --sizes",
     "test": "forge test",
     "snapshot": "forge snapshot --isolate",
     "snapshot:diff": "forge snapshot --diff --isolate",
-    "prettier": "prettier -c {script,src,test}/**/*.sol",
-    "prettier:fix": "prettier -w {script,src,test}/**/*.sol",
+    "prettier": "prettier -c {script,src,test}/{,**/,**/**/}*.sol",
+    "prettier:fix": "prettier -w {script,src,test}/{,**/,**/**/}*.sol",
     "typechain": "hardhat typechain"
   },
   "dependencies": {

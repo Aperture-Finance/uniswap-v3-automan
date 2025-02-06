@@ -574,7 +574,13 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         if (params.token1 == tokenIn) amount1 = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
         // Perform optimal swap, which updates the amountsDesired.
         (poolKey.token0, poolKey.token1) = (params.token0, params.token1);
-        (params.amount0Desired, params.amount1Desired) = _optimalSwapWithPool(poolKey, params.tickLower, params.tickUpper, amount0, amount1);
+        (params.amount0Desired, params.amount1Desired) = _optimalSwapWithPool(
+            poolKey,
+            params.tickLower,
+            params.tickUpper,
+            amount0,
+            amount1
+        );
         // Approve npm to spend & mint.
         if (params.amount0Desired != 0) poolKey.token0.safeApprove(address(npm), params.amount0Desired);
         if (params.amount1Desired != 0) poolKey.token1.safeApprove(address(npm), params.amount1Desired);
@@ -674,7 +680,13 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         if (position.token1 == tokenIn) amount1 = ERC20Callee.wrap(tokenIn).balanceOf(address(this));
         // Perform optimal swap, which updates the amountsDesired.
         (poolKey.token0, poolKey.token1) = (position.token0, position.token1);
-        (params.amount0Desired, params.amount1Desired) = _optimalSwapWithPool(poolKey, position.tickLower, position.tickUpper, amount0, amount1);
+        (params.amount0Desired, params.amount1Desired) = _optimalSwapWithPool(
+            poolKey,
+            position.tickLower,
+            position.tickUpper,
+            amount0,
+            amount1
+        );
         // Approve npm to spend & increaseLiquidity.
         if (params.amount0Desired != 0) poolKey.token0.safeApprove(address(npm), params.amount0Desired);
         if (params.amount1Desired != 0) poolKey.token1.safeApprove(address(npm), params.amount1Desired);
