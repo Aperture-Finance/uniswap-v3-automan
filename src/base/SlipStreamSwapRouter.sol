@@ -201,54 +201,28 @@ abstract contract SlipStreamSwapRouter is Ownable, Payments, SlipStreamCallback,
         SlipStreamPoolAddress.PoolKey memory poolKey,
         bytes calldata swapData
     ) internal {
-        bool zeroForOne;
-        assembly {
-            // Refer to around line 125 for explanation.
-            zeroForOne := shr(248, calldataload(add(swapData.offset, 69)))
-        }
-
         // swap tokens to the optimal ratio to add liquidity in the same pool
         unchecked {
             uint256 balance0 = ERC20Callee.wrap(poolKey.token0).balanceOf(address(this));
             uint256 balance1 = ERC20Callee.wrap(poolKey.token1).balanceOf(address(this));
+            address pool = computeAddressSorted(poolKey);
+            int24 tickLower;
+            int24 tickUpper;
             uint256 amountIn;
-            uint256 amountOut;
-            {
-                address pool = computeAddressSorted(poolKey);
-                int24 tickLower;
-                int24 tickUpper;
-                uint256 amount0Desired;
-                uint256 amount1Desired;
-                assembly {
-                    // Refer to around line 125 for explanation.
-                    tickLower := sar(232, calldataload(add(swapData.offset, 63)))
-                    tickUpper := sar(232, calldataload(add(swapData.offset, 66)))
-                }
-                // take into account the balance not pulled from the sender
-                if (zeroForOne) {
-                    amount0Desired = balance0;
-                    amount1Desired = balance1 + ERC20Callee.wrap(poolKey.token1).balanceOf(msg.sender);
-                } else {
-                    amount0Desired = balance0 + ERC20Callee.wrap(poolKey.token0).balanceOf(msg.sender);
-                    amount1Desired = balance1;
-                }
-                (amountIn, , zeroForOne, ) = OptimalSwap.getOptimalSwap(
-                    V3PoolCallee.wrap(computeAddressSorted(poolKey)),
-                    tickLower,
-                    tickUpper,
-                    amount0Desired,
-                    amount1Desired
-                );
-                amountOut = _poolSwap(poolKey, pool, amountIn, zeroForOne);
-            }
-            // balance0 = balance0 + zeroForOne ? - amountIn : amountOut
-            // balance1 = balance1 + zeroForOne ? amountOut : - amountIn
+            bool zeroForOne;
             assembly {
-                let minusAmountIn := sub(0, amountIn)
-                let diff := mul(xor(amountOut, minusAmountIn), zeroForOne)
-                balance0 := add(balance0, xor(amountOut, diff))
-                balance1 := add(balance1, xor(minusAmountIn, diff))
+                // Refer to around line 125 for explanation.
+                tickLower := sar(232, calldataload(add(swapData.offset, 63)))
+                tickUpper := sar(232, calldataload(add(swapData.offset, 66)))
             }
+            (amountIn, , zeroForOne, ) = OptimalSwap.getOptimalSwap(
+                V3PoolCallee.wrap(computeAddressSorted(poolKey)),
+                tickLower,
+                tickUpper,
+                balance0,
+                balance1
+            );
+            _poolSwap(poolKey, pool, amountIn, zeroForOne);
         }
     }
 
