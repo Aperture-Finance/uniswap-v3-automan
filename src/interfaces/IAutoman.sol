@@ -123,7 +123,7 @@ interface IAutomanCommon is ISwapRouterCommon {
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0 spent
     /// @return amount1 The amount of token1 spent
-    function increaseLiquidityWithTokenIn(
+    function increaseLiquidityFromTokenIn(
         IUniV3NPM.IncreaseLiquidityParams memory params,
         // params.amount0Desired = The amount of tokenIn to swap for token0
         // params.amount1Desired = The amount of tokenIn to swap for token1
@@ -364,7 +364,7 @@ interface IAutomanUniV3MintRebalance {
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0 spent
     /// @return amount1 The amount of token1 spent
-    function mintWithTokenIn(
+    function mintFromTokenIn(
         IUniV3NPM.MintParams memory params,
         address tokenIn,
         uint256 tokenInFeeAmount,
@@ -515,7 +515,7 @@ interface IAutomanSlipStreamMintRebalance {
     /// @return liquidity The amount of liquidity for this position
     /// @return amount0 The amount of token0 spent
     /// @return amount1 The amount of token1 spent
-    function mintWithTokenIn(
+    function mintFromTokenIn(
         ISlipStreamNPM.MintParams memory params,
         address tokenIn,
         uint256 tokenInFeeAmount,

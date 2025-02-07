@@ -533,7 +533,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         emit Mint(tokenId);
     }
 
-    function mintWithTokenIn(
+    function mintFromTokenIn(
         ISlipStreamNPM.MintParams memory params,
         // params.amount0Desired = The amount of tokenIn to swap for token0
         // params.amount1Desired = The amount of tokenIn to swap for token1
@@ -638,7 +638,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         emit IncreaseLiquidity(params.tokenId);
     }
 
-    function increaseLiquidityWithTokenIn(
+    function increaseLiquidityFromTokenIn(
         ISlipStreamNPM.IncreaseLiquidityParams memory params,
         // params.amount0Desired = The amount of tokenIn to swap for token0
         // params.amount1Desired = The amount of tokenIn to swap for token1

@@ -529,7 +529,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         emit Mint(tokenId);
     }
 
-    function mintWithTokenIn(
+    function mintFromTokenIn(
         IUniV3NPM.MintParams memory params,
         // params.amount0Desired = The amount of tokenIn to swap for token0
         // params.amount1Desired = The amount of tokenIn to swap for token1
@@ -634,7 +634,7 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         emit IncreaseLiquidity(params.tokenId);
     }
 
-    function increaseLiquidityWithTokenIn(
+    function increaseLiquidityFromTokenIn(
         IUniV3NPM.IncreaseLiquidityParams memory params,
         // params.amount0Desired = The amount of tokenIn to swap for token0
         // params.amount1Desired = The amount of tokenIn to swap for token1
