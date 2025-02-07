@@ -138,24 +138,24 @@ abstract contract SwapRouter is Ownable, Payments, ISwapRouterCommon {
             | data              | [110,    ) |
 
             Word sizes are 32 bytes, and addresses are 20 bytes, so need to shift right 12 bytes = 96 bits
-            Therefore, token0 := shr(96, calldataload(add(swapData.offset, 20))) 
-            20 bytes offset then shifting right 96 bits is the same as 20-96/8 = 8 bytes offset
-            However, int24 and bool are interpreted differently, so the bit shifting is required.
+            Although shr(96, calldataload(add(swapData.offset, 20))) is similiar to calldataload(add(swapData.offset, 8))
+            because 20 bytes offset then shifting right 96 bits is the same as 20-96/8 = 8 bytes offset,
+            doing method with shift is safer to clear the 1st 12 bytes of an address.
             Therefore,
-                optimalSwapRouter := shr(96, calldataload(add(swapData.offset, 0))) == calldataload(sub(swapData.offset, 12))
-                token0 := shr(96, calldataload(add(swapData.offset, 20))) == calldataload(add(swapData.offset, 8))
-                token1 := shr(96, calldataload(add(swapData.offset, 40))) == calldataload(add(swapData.offset, 28))
+                optimalSwapRouter := shr(96, calldataload(add(swapData.offset, 0)))
+                token0 := shr(96, calldataload(add(swapData.offset, 20)))
+                token1 := shr(96, calldataload(add(swapData.offset, 40)))
                 feeOrTickSpacing := shr(232, calldataload(add(swapData.offset, 60)))
                 tickLower := sar(232, calldataload(add(swapData.offset, 63)))
                 tickUpper := sar(232, calldataload(add(swapData.offset, 66)))
                 zeroForOne := shr(248, calldataload(add(swapData.offset, 69)))
-                approvalTarget := shr(96, calldataload(add(swapData.offset, 70))) == calldataload(add(swapData.offset, 58))
-                router := shr(96, calldataload(add(swapData.offset, 90))) == calldataload(add(swapData.offset, 78))
+                approvalTarget := shr(96, calldataload(add(swapData.offset, 70)))
+                router := shr(96, calldataload(add(swapData.offset, 90)))
                 data.length := sub(swapData.length, 110)
                 data.offset := add(swapData.offset, 110)
             */
-            approvalTarget := calldataload(add(swapData.offset, 58))
-            router := calldataload(add(swapData.offset, 78))
+            approvalTarget := shr(96, calldataload(add(swapData.offset, 70)))
+            router := shr(96, calldataload(add(swapData.offset, 90)))
             data.length := sub(swapData.length, 110)
             data.offset := add(swapData.offset, 110)
         }
