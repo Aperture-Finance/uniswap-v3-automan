@@ -12,8 +12,8 @@ contract DeployPCSV3Automan is Script {
         bytes32 automanSalt;
         address controller;
         PCSV3Automan.FeeConfig feeConfig;
-        INPM npm;
-        address okxRouter;
+        INPM npm; // https://docs.pancakeswap.finance/developers/smart-contracts/pancakeswap-exchange/v3-contracts
+        address okxRouter; // https://www.okx.com/web3/build/docs/waas/dex-smart-contract
         address owner;
     }
 
@@ -44,9 +44,10 @@ contract DeployPCSV3Automan is Script {
         console.log("Deploying automan with params: %s", json);
         DeployParams memory params = abi.decode(vm.parseJson(json), (DeployParams));
 
-        // Encode constructor arguments
+        // Deploy PCSV3Automan.
+        // Encode constructor arguments.
         bytes memory encodedArguments = abi.encode(params.npm, msgSender);
-        // Concatenate init code with encoded arguments
+        // Concatenate creationCode with encoded arguments.
         bytes memory initCode = bytes.concat(type(PCSV3Automan).creationCode, encodedArguments);
         bytes32 initCodeHash = keccak256(initCode);
         console2.log("PCSV3Automan initCodeHash:");

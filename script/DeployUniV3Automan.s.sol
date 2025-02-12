@@ -12,8 +12,8 @@ contract DeployUniV3Automan is Script {
         bytes32 automanSalt;
         address controller;
         UniV3Automan.FeeConfig feeConfig;
-        INPM npm;
-        address okxRouter;
+        INPM npm; // https://docs.uniswap.org/contracts/v3/reference/deployments/
+        address okxRouter; // https://www.okx.com/web3/build/docs/waas/dex-smart-contract
         address owner;
     }
 
@@ -44,9 +44,10 @@ contract DeployUniV3Automan is Script {
         console.log("Deploying automan with params: %s", json);
         DeployParams memory params = abi.decode(vm.parseJson(json), (DeployParams));
 
-        // Encode constructor arguments
+        // Deploy UniV3Automan.
+        // Encode constructor arguments.
         bytes memory encodedArguments = abi.encode(params.npm, msgSender);
-        // Concatenate init code with encoded arguments
+        // Concatenate creationCode with encoded arguments.
         bytes memory initCode = bytes.concat(type(UniV3Automan).creationCode, encodedArguments);
         bytes32 initCodeHash = keccak256(initCode);
         console2.log("UniV3Automan initCodeHash:");

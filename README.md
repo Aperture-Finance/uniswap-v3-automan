@@ -82,13 +82,15 @@ To simulate scripts, we can pass in `--fork-url <network>` to `forge script`. Th
 `rpc_endpoints` defined in [`foundry.toml`](foundry.toml) or an url to a node.
 
 ```shell
-forge script DeployUniV3Automan --fork-url [NETWORK_NAME] -vvvv
+forge script Deploy{UniV3,PCSV3,SlipStream}Automan --fork-url [NETWORK_NAME] -vvvv
+E.g.: forge script DeployUniV3Automan --fork-url arbiturm_one -vvvv
 ```
 
 To run broadcast transactions on-chain, use:
 
 ```shell
-forge script DeployUniV3Automan --rpc-url [NETWORK_NAME] --broadcast -vvvv
+forge script Deploy{UniV3,PCSV3,SlipStream}Automan --rpc-url [NETWORK_NAME] --broadcast -vvvv
+E.g.: forge script DeployUniV3Automan --fork-url arbiturm_one --broadcast -vvvv
 ```
 
 ## Deployment
@@ -109,8 +111,8 @@ Second, use the initCodeHash obtained above to mine a vanity address using the f
 git clone https://github.com/0age/create2crunch
 cd create2crunch
 export FACTORY="0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2"
-export CALLER="[DEPLOYER_ADDRESS_GOES_HERE]"
-export INIT_CODE_HASH="[INIT_CODE_HASH_GOES_HERE]"
+export CALLER="0xbeef63AE5a2102506e8a352a5bB32aA8B30B3112" # DEPLOYER_ADDRESS
+export INIT_CODE_HASH="0xbafd4e1d1ff7f7979102d9e80884c2a93d0e1160dae77b5f88e9bca95eb5e4d0" # INIT_HASH_CODE
 cargo run --release $FACTORY $CALLER $INIT_CODE_HASH
 ```
 
@@ -129,7 +131,8 @@ Re-simulate `DeployUniV3Automan` with a dry-run to verify that the deployment ad
 Generate the standard JSON input and verify the contract on Etherscan with it:
 
 ```shell
-forge verify-contract 0x00000000Ede6d8D217c60f93191C060747324bca UniV3Automan --optimizer-runs 4194304 --constructor-args 0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88000000000000000000000000beef63ae5a2102506e8a352a5bb32aa8b30b3112 --show-standard-json-input > broadcast/DeployUniV3Automan.s.sol/1/UniV3Automan.json
+forge verify-contract [DEPLOYED_AUTOMAN_ADDRESS] {UniV3,PCSV3,SlipStream}Automan --optimizer-runs 4194304 --constructor-args 0x[ENCODED_NONFUNGIBLE_POSITION_MANAGER_ADDRESS][ENCODED_DEPLOYER_ADDRESS] --show-standard-json-input > broadcast/Deploy{UniV3,PCSV3,SlipStream}Automan.s.sol/[CHAIN_ID]/{UniV3,PCSV3,SlipStream}Automan.json
+E.g.: forge verify-contract 0x00000000Ede6d8D217c60f93191C060747324bca UniV3Automan --optimizer-runs 4194304 --constructor-args 0x000000000000000000000000c36442b4a4522e871399cd717abdd847ab11fe88000000000000000000000000beef63ae5a2102506e8a352a5bb32aa8b30b3112 --show-standard-json-input > broadcast/Deploy{UniV3,PCSV3,SlipStream}Automan.s.sol/{chainId}/{UniV3,PCSV3,SlipStream}Automan.json
 ```
 
 Constructor args can be encoded easily using an online ABI tool like https://abi.hashex.org. The above example shows `UniV3Automan` constructor args consisting of the nonfungible position manager contract address followed by the deployer address as the temporary Automan owner during deployment.

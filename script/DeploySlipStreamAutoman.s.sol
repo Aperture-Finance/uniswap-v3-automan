@@ -12,8 +12,8 @@ contract DeploySlipStreamAutoman is Script {
         bytes32 automanSalt;
         address controller;
         SlipStreamAutoman.FeeConfig feeConfig;
-        INPM npm;
-        address okxRouter;
+        INPM npm; // https://aerodrome.finance/security or https://github.com/velodrome-finance/slipstream?tab=readme-ov-file#deployment
+        address okxRouter; // https://www.okx.com/web3/build/docs/waas/dex-smart-contract
         address owner;
     }
 
@@ -45,7 +45,9 @@ contract DeploySlipStreamAutoman is Script {
         DeployParams memory params = abi.decode(vm.parseJson(json), (DeployParams));
 
         // Deploy SlipStreamAutoman.
+        // Encode constructor arguments.
         bytes memory encodedArguments = abi.encode(params.npm, msgSender);
+        // Concatenate creationCode with encoded arguments.
         bytes memory initCode = bytes.concat(type(SlipStreamAutoman).creationCode, encodedArguments);
         bytes32 initCodeHash = keccak256(initCode);
         console2.log("SlipStreamAutoman initCodeHash:");
