@@ -44,10 +44,10 @@ interface IAutomanCommon is ISwapRouterCommon {
 
     /// @notice Set the fee limit and collector
     /// @param _feeConfig The new fee configuration
-    function setFeeConfig(FeeConfig calldata _feeConfig) external payable;
+    function setFeeConfig(FeeConfig calldata _feeConfig) external;
 
     /// @notice Set addresses that can perform automation
-    function setControllers(address[] calldata controllers, bool[] calldata statuses) external payable;
+    function setControllers(address[] calldata controllers, bool[] calldata statuses) external;
 
     /// @notice Check if an address is a controller
     /// @param addressToCheck The address to check
@@ -107,6 +107,32 @@ interface IAutomanCommon is ISwapRouterCommon {
         uint256 token1FeeAmount
     ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
+    /// @notice Increases the amount of liquidity in a position using optimal swap and a single tokenIn.
+    /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
+    /// a method does not exist, i.e. the pool is assumed to be initialized.
+    /// @param params tokenId The ID of the token for which liquidity is being increased,
+    /// amount0Desired The amount of tokenIn to swap for token0,
+    /// amount1Desired The amount of tokenIn to swap for token1,
+    /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
+    /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
+    /// deadline The time by which the transaction must be included to effect the change
+    /// @param tokenIn The tokenIn to swap for token0 and token1
+    /// @param tokenInFeeAmount The amount of tokenIn to send to feeCollector
+    /// @param swapData0 The swap data for swapping from tokenIn to token0
+    /// @param swapData1 The swap data for swapping from tokenIn to token1
+    /// @return liquidity The amount of liquidity for this position
+    /// @return amount0 The amount of token0 spent
+    /// @return amount1 The amount of token1 spent
+    function increaseLiquidityFromTokenIn(
+        IUniV3NPM.IncreaseLiquidityParams memory params,
+        // params.amount0Desired = The amount of tokenIn to swap for token0
+        // params.amount1Desired = The amount of tokenIn to swap for token1
+        address tokenIn,
+        uint256 tokenInFeeAmount, // The amount of tokenIn to send to feeCollector
+        bytes calldata swapData0,
+        bytes calldata swapData1
+    ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1);
+
     /// @notice Decreases the amount of liquidity in a position and accounts it to the position
     /// @dev Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
     /// It is applied on the principal amounts excluding trading fees.
@@ -156,58 +182,62 @@ interface IAutomanCommon is ISwapRouterCommon {
     ) external returns (uint256 amount0, uint256 amount1);
 
     /// @notice Decreases the amount of liquidity in a position and swaps to a single token
-    /// @dev Slippage check is enforced by specifying `amount0Min` when `token0` is the target token
-    /// and `amount1Min` otherwise, applied after transaction fees.
+    /// @dev Slippage check is enforced by specifying `tokenOutMin`. params.amountMins are
+    /// used as tokenFeeAmounts due to stack too deep compiler error, which works even when
+    /// passing calling NPM's decreaseLiquidity because it needs to decrease enough liquidity
+    /// to collect fees.
     /// @param params tokenId The ID of the token for which liquidity is being decreased,
     /// liquidity The amount by which liquidity will be decreased,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
+    /// amount0Min used as token0FeeAmount, the amount of token0 to send to feeCollector, due to CompilerError: Stack too deep
+    /// amount1Min used as token1FeeAmount, the amount of token0 to send to feeCollector, due to CompilerError: Stack too deep
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param zeroForOne True if token0 is being swapped for token1, false otherwise
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param swapData The address of the external router and call data
+    /// @param tokenOut The desired tokenOut
+    /// @param tokenOutMin The minimum amount of tokenOut to recieve for slippage check
+    /// @param swapData0 The swap data for swapping from token0 to tokenOut
+    /// @param swapData1 The swap data for swapping from token1 to tokenOut
     /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
-    /// @return amount The total amount of desired token returned minus fees
-    function decreaseLiquiditySingle(
+    /// @return tokenOutAmount The total amount of desired token returned minus fees
+    function decreaseLiquidityToTokenOut(
         INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData,
+        address tokenOut,
+        uint256 tokenOutMin,
+        bytes calldata swapData0,
+        bytes calldata swapData1,
         bool isUnwrapNative
-    ) external returns (uint256 amount);
+    ) external returns (uint256 tokenOutAmount);
 
     /// @notice Decreases the amount of liquidity in a position and swaps to a single token using permit
-    /// @dev Slippage check is enforced by specifying `amount0Min` when `token0` is the target token
-    /// and `amount1Min` otherwise, applied after transaction fees.
+    /// @dev Slippage check is enforced by specifying `tokenOutMin`. params.amountMins are
+    /// used as tokenFeeAmounts due to stack too deep compiler error, which works even when
+    /// passing calling NPM's decreaseLiquidity because it needs to decrease enough liquidity
+    /// to collect fees.
     /// @param params tokenId The ID of the token for which liquidity is being decreased,
     /// liquidity The amount by which liquidity will be decreased,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
+    /// amount0Min used as token0FeeAmount, the amount of token0 to send to feeCollector, due to CompilerError: Stack too deep
+    /// amount1Min used as token1FeeAmount, the amount of token0 to send to feeCollector, due to CompilerError: Stack too deep
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param zeroForOne True if token0 is being swapped for token1, false otherwise
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param swapData The address of the external router and call data
+    /// @param tokenOut The desired tokenOut
+    /// @param tokenOutMin The minimum amount of tokenOut to recieve for slippage check
+    /// @param swapData0 The swap data for swapping token0 to tokenOut
+    /// @param swapData1 The swap data for swapping token1 to tokenOut
     /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
     /// @param permitDeadline The deadline of the permit signature
     /// @param v The recovery byte of the signature
     /// @param r Half of the ECDSA signature pair
     /// @param s Half of the ECDSA signature pair
-    /// @return amount The total amount of desired token returned minus fees
-    function decreaseLiquiditySingle(
+    /// @return tokenOutAmount The total amount of desired token returned minus fees
+    function decreaseLiquidityToTokenOut(
         INPM.DecreaseLiquidityParams memory params,
-        bool zeroForOne,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData,
+        address tokenOut,
+        uint256 tokenOutMin,
+        bytes calldata swapData0,
+        bytes calldata swapData1,
         bool isUnwrapNative,
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external returns (uint256 amount);
+    ) external returns (uint256 tokenOutAmount);
 
     /// @notice Reinvests all fees owed to a specific position to the same position using optimal swap
     /// @param params tokenId The ID of the token for which liquidity is being increased,
@@ -309,6 +339,37 @@ interface IAutomanUniV3MintRebalance {
         bytes calldata swapData,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount
+    ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
+
+    /// @notice Creates a new position wrapped in a NFT using a single tokenIn.
+    /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
+    /// a method does not exist, i.e. the pool is assumed to be initialized.
+    /// @param params The params necessary to mint a position, encoded as `MintParams` in calldata
+    /// token0 The address of the token0 for a specific pool
+    /// token1 The address of the token1 for a specific pool
+    /// fee The fee associated with the pool
+    /// tickLower The lower tick of the position in which to add liquidity
+    /// tickUpper The upper tick of the position in which to add liquidity
+    /// amount0Desired The amount of tokenIn to swap for token0
+    /// amount1Desired The amount of tokenIn to swap for token1
+    /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check
+    /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check
+    /// recipient The recipient of the minted position
+    /// deadline The time by which the transaction must be included to effect the change
+    /// @param tokenIn The tokenIn to swap for token0 and token1
+    /// @param tokenInFeeAmount The amount of tokenIn to send to feeCollector
+    /// @param swapData0 The swap data for swapping from tokenIn to token0
+    /// @param swapData1 The swap data for swapping from tokenIn to token1
+    /// @return tokenId The ID of the token that represents the minted position
+    /// @return liquidity The amount of liquidity for this position
+    /// @return amount0 The amount of token0 spent
+    /// @return amount1 The amount of token1 spent
+    function mintFromTokenIn(
+        IUniV3NPM.MintParams memory params,
+        address tokenIn,
+        uint256 tokenInFeeAmount,
+        bytes calldata swapData0,
+        bytes calldata swapData1
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range
@@ -429,6 +490,37 @@ interface IAutomanSlipStreamMintRebalance {
         bytes calldata swapData,
         uint256 token0FeeAmount,
         uint256 token1FeeAmount
+    ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
+
+    /// @notice Creates a new position wrapped in a NFT using a single tokenIn.
+    /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
+    /// a method does not exist, i.e. the pool is assumed to be initialized.
+    /// @param params The params necessary to mint a position, encoded as `MintParams` in calldata
+    /// token0 The address of the token0 for a specific pool
+    /// token1 The address of the token1 for a specific pool
+    /// tickSpacing The tickSpacing associated with the pool
+    /// tickLower The lower tick of the position in which to add liquidity
+    /// tickUpper The upper tick of the position in which to add liquidity
+    /// amount0Desired The amount of tokenIn to swap for token0
+    /// amount1Desired The amount of tokenIn to swap for token1
+    /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check
+    /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check
+    /// recipient The recipient of the minted position
+    /// deadline The time by which the transaction must be included to effect the change
+    /// @param tokenIn The tokenIn to swap for token0 and token1
+    /// @param tokenInFeeAmount The amount of tokenIn to send to feeCollector
+    /// @param swapData0 The swap data for swapping from tokenIn to token0
+    /// @param swapData1 The swap data for swapping from tokenIn to token1
+    /// @return tokenId The ID of the token that represents the minted position
+    /// @return liquidity The amount of liquidity for this position
+    /// @return amount0 The amount of token0 spent
+    /// @return amount1 The amount of token1 spent
+    function mintFromTokenIn(
+        ISlipStreamNPM.MintParams memory params,
+        address tokenIn,
+        uint256 tokenInFeeAmount,
+        bytes calldata swapData0,
+        bytes calldata swapData1
     ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range
