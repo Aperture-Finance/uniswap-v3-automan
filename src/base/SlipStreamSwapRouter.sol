@@ -125,35 +125,38 @@ abstract contract SlipStreamSwapRouter is Ownable, Payments, SlipStreamCallback,
         assembly {
             /*
             `swapData` is encoded as `abi.encodePacked(token0, token1, fee, tickLower, tickUpper, zeroForOne, approvalTarget, router, data)`
-            | Arg            | Offset     |
-            |----------------|------------|
-            | optimalSwapRtr | [  0,  20) |
-            | token0         | [ 20,  40) |
-            | token1         | [ 40,  60) |
-            | fee            | [ 60,  63) |
-            | tickLower      | [ 63,  66) |
-            | tickUpper      | [ 66,  69) |
-            | zeroForOne     | [ 69,  70) |
-            | approvalTarget | [ 70,  90) |
-            | router         | [ 90, 110) |
-            | data.offset    | [110,    ) |
+            | Arg               | Offset     |
+            |-------------------|------------|
+            | optimalSwapRouter | [  0,  20) |
+            | token0            | [ 20,  40) |
+            | token1            | [ 40,  60) |
+            | feeOrTickSpacing  | [ 60,  63) |
+            | tickLower         | [ 63,  66) |
+            | tickUpper         | [ 66,  69) |
+            | zeroForOne        | [ 69,  70) |
+            | approvalTarget    | [ 70,  90) |
+            | router            | [ 90, 110) |
+            | data              | [110,    ) |
 
             Word sizes are 32 bytes, and addresses are 20 bytes, so need to shift right 12 bytes = 96 bits
-            Therefore, token0 := shr(96, calldataload(add(swapData.offset, 20))) 
-            20 bytes offset then shifting right 96 bits is the same as 20-96/8 = 8 bytes offset
-            However, int24 and bool are interpreted differently, so the bit shifting is required.
+            Although shr(96, calldataload(add(swapData.offset, 20))) is similiar to calldataload(add(swapData.offset, 8))
+            because 20 bytes offset then shifting right 96 bits is the same as 20-96/8 = 8 bytes offset,
+            doing method with shift is safer to clear the 1st 12 bytes of an address.
             Therefore,
-                token0 := shr(96, calldataload(add(swapData.offset, 20))) == calldataload(add(swapData.offset, 8))
-                token1 := shr(96, calldataload(add(swapData.offset, 40))) == calldataload(add(swapData.offset, 28))
-                fee := shr(232, calldataload(add(swapData.offset, 60)))
+                optimalSwapRouter := shr(96, calldataload(add(swapData.offset, 0)))
+                token0 := shr(96, calldataload(add(swapData.offset, 20)))
+                token1 := shr(96, calldataload(add(swapData.offset, 40)))
+                feeOrTickSpacing := shr(232, calldataload(add(swapData.offset, 60)))
                 tickLower := sar(232, calldataload(add(swapData.offset, 63)))
                 tickUpper := sar(232, calldataload(add(swapData.offset, 66)))
                 zeroForOne := shr(248, calldataload(add(swapData.offset, 69)))
-                approvalTarget := shr(96, calldataload(add(swapData.offset, 70))) == calldataload(add(swapData.offset, 58))
-                router := shr(96, calldataload(add(swapData.offset, 90))) == calldataload(add(swapData.offset, 78))
+                approvalTarget := shr(96, calldataload(add(swapData.offset, 70)))
+                router := shr(96, calldataload(add(swapData.offset, 90)))
+                data.length := sub(swapData.length, 110)
+                data.offset := add(swapData.offset, 110)
             */
-            approvalTarget := calldataload(add(swapData.offset, 58))
-            router := calldataload(add(swapData.offset, 78))
+            approvalTarget := shr(96, calldataload(add(swapData.offset, 70)))
+            router := shr(96, calldataload(add(swapData.offset, 90)))
             data.length := sub(swapData.length, 110)
             data.offset := add(swapData.offset, 110)
         }
