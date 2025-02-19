@@ -328,17 +328,14 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function _decreaseLiquidityToTokenOut(
         INPM.DecreaseLiquidityParams memory params,
         address tokenOut,
-        uint256 tokenOutMin,
+        // Amounts have multiple uses due to stacktoodeep compiler error.
+        uint256 amount0,
+        uint256 amount1,
         bytes calldata swapData0,
         bytes calldata swapData1,
         bool isUnwrapNative
     ) private returns (uint256 tokenOutAmount) {
         Position memory position = _positions(params.tokenId);
-        // amountMins are used as feeAmounts due to stack too deep compiler error.
-        // slippage check done at the end of this function instead of NPM call,
-        // so save the feeAmounts and clear the slippage checks.
-        (uint256 amount0, uint256 amount1) = (params.amount0Min, params.amount1Min);
-        (params.amount0Min, params.amount1Min) = (0, 0);
         // Optionally collect without decreasing liquidity.
         if (params.liquidity != 0) {
             NPMCaller.decreaseLiquidity(npm, params);
@@ -379,7 +376,6 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             tokenOutAmount = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
             refund(tokenOut, owner, tokenOutAmount, isUnwrapNative);
         }
-        if (tokenOutAmount < tokenOutMin) revert InsufficientAmount();
         if (params.liquidity == position.liquidity) {
             // Burn token when removing all liquidity.
             _burn(params.tokenId);
@@ -733,7 +729,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function decreaseLiquidityToTokenOut(
         INPM.DecreaseLiquidityParams memory params,
         address tokenOut,
-        uint256 tokenOutMin,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData0,
         bytes calldata swapData1,
         bool isUnwrapNative
@@ -743,7 +740,8 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         tokenOutAmount = _decreaseLiquidityToTokenOut(
             params,
             tokenOut,
-            tokenOutMin,
+            token0FeeAmount,
+            token1FeeAmount,
             swapData0,
             swapData1,
             isUnwrapNative
@@ -755,22 +753,21 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function decreaseLiquidityToTokenOut(
         INPM.DecreaseLiquidityParams memory params,
         address tokenOut,
-        uint256 tokenOutMin,
+        uint256 token0FeeAmount,
+        uint256 token1FeeAmount,
         bytes calldata swapData0,
         bytes calldata swapData1,
         bool isUnwrapNative,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        Permit calldata permit
     ) external returns (uint256 tokenOutAmount) {
         uint256 tokenId = params.tokenId;
         checkAuthorizedForToken(tokenId);
-        selfPermitIfNecessary(tokenId, permitDeadline, v, r, s);
+        selfPermitIfNecessary(tokenId, permit.deadline, permit.v, permit.r, permit.s);
         tokenOutAmount = _decreaseLiquidityToTokenOut(
             params,
             tokenOut,
-            tokenOutMin,
+            token0FeeAmount,
+            token1FeeAmount,
             swapData0,
             swapData1,
             isUnwrapNative

@@ -318,10 +318,10 @@ contract UniHandler is UniBase {
     ) internal returns (uint256 amount) {
         (, , address token0, address token1, , , , , , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         amount = automan.decreaseLiquidityToTokenOut(
-            // amountMins are used as feeAmounts due to stack too deep compiler error.
-            INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, token0FeeAmount, token1FeeAmount, block.timestamp),
+            INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
             /* tokenOut= */ zeroForOne ? token1 : token0,
-            /* tokenOutMin= */ 0,
+            token0FeeAmount,
+            token1FeeAmount,
             /* swapData0= */ new bytes(0),
             /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true
@@ -337,10 +337,10 @@ contract UniHandler is UniBase {
         uint256 token1FeeAmount
     ) internal returns (uint256 amount) {
         amount = automan.decreaseLiquidityToTokenOut(
-            // amountMins are used as feeAmounts due to stack too deep compiler error.
-            INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, token0FeeAmount, token1FeeAmount, block.timestamp),
+            INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
             tokenOut,
-            /* tokenOutMin= */ 0,
+            token0FeeAmount,
+            token1FeeAmount,
             /* swapData0= */ new bytes(0),
             /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true
@@ -382,13 +382,13 @@ contract UniHandler is UniBase {
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
                 liquidity: liquidity,
-                // amountMins are used as feeAmounts due to stack too deep compiler error.
-                amount0Min: token0FeeAmount,
-                amount1Min: token1FeeAmount,
+                amount0Min: 0,
+                amount1Min: 0,
                 deadline: block.timestamp
             }),
             /* tokenOut= */ zeroForOne ? token1 : token0,
-            /* tokenOutMin= */ 0,
+            token0FeeAmount,
+            token1FeeAmount,
             /* swapData0= */ new bytes(0),
             /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true

@@ -157,7 +157,6 @@ contract UniV3AutomanTest is UniHandler {
     function testRevert_NotAuthorizedForToken() public {
         uint256 tokenId = thisTokenId;
         (, , int24 tickLower, int24 tickUpper) = fixedInputs();
-        (, , address token0, address token1, , , , , , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         npm.approve(address(automan), tokenId);
         // `user` is not the owner or controller.
         assertTrue(!automan.isController(user));
@@ -469,18 +468,21 @@ contract UniV3AutomanTest is UniHandler {
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
+        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({
+            deadline: deadline,
+            v: v,
+            r: r,
+            s: s
+        });
         automan.decreaseLiquidityToTokenOut(
-            // amountMins are used as feeAmounts due to stack too deep compiler error.
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
             /* tokenOut= */ zeroForOne ? token1 : token0,
-            /* tokenOutMin= */ 0,
+            /* token0FeeAmount= */ 0,
+            /* token1FeeAmount= */ 0,
             /* swapData0= */ new bytes(0),
             /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true,
-            deadline,
-            v,
-            r,
-            s
+            permit
         );
     }
 
@@ -561,24 +563,27 @@ contract UniV3AutomanTest is UniHandler {
         (, , address token0, address token1, , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(
             tokenId
         );
+        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({
+            deadline: deadline,
+            v: v,
+            r: r,
+            s: s
+        });
         automan.decreaseLiquidityToTokenOut(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
                 liquidity: liquidity,
-                // amountMins are used as feeAmounts due to stack too deep compiler error.
-                amount0Min: /* token0FeeAmount= */ 0,
-                amount1Min: /* token1FeeAmount= */ 0,
+                amount0Min: 0,
+                amount1Min: 0,
                 deadline: deadline
             }),
             /* tokenOut= */ zeroForOne ? token1 : token0,
-            /* tokenOutMin= */ 0,
+            /* token0FeeAmount= */ 0,
+            /* token1FeeAmount= */ 0,
             /* swapData0= */ new bytes(0),
             /* swapData1= */ new bytes(0),
             /* isUnwrapNative= */ true,
-            deadline,
-            v,
-            r,
-            s
+            permit
         );
     }
 
