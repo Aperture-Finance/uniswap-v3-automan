@@ -468,12 +468,7 @@ contract UniV3AutomanTest is UniHandler {
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
-        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({
-            deadline: deadline,
-            v: v,
-            r: r,
-            s: s
-        });
+        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         automan.decreaseLiquidityToTokenOut(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
             /* tokenOut= */ zeroForOne ? token1 : token0,
@@ -563,12 +558,7 @@ contract UniV3AutomanTest is UniHandler {
         (, , address token0, address token1, , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(
             tokenId
         );
-        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({
-            deadline: deadline,
-            v: v,
-            r: r,
-            s: s
-        });
+        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         automan.decreaseLiquidityToTokenOut(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,

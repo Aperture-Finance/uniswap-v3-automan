@@ -187,7 +187,6 @@ interface IAutomanCommon is ISwapRouterCommon {
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
         bool isUnwrapNative,
-
         uint256 permitDeadline,
         uint8 v,
         bytes32 r,
