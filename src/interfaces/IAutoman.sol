@@ -42,7 +42,7 @@ interface IAutomanCommon is ISwapRouterCommon {
         uint96 feeLimitPips;
     }
 
-    // Useful for stack too deep compiler error.
+    // Signature permit struct.
     struct Permit {
         // The deadline of the permit signature
         uint256 deadline;
@@ -52,6 +52,21 @@ interface IAutomanCommon is ISwapRouterCommon {
         bytes32 r;
         // Half of the ECDSA signature pair
         bytes32 s;
+    }
+
+    struct CollectConfig {
+        // The amount of token0 to send to feeCollector
+        uint256 token0FeeAmount;
+        // The amount of token1 to send to feeCollector
+        uint256 token1FeeAmount;
+        // The token to collect. E.g. allows collecting volatile pairs to stablecoin.
+        // Use address(0) to collect as same pair
+        address tokenOut;
+        // If isCollect and tokenOut, swapData for swapping collected fees to tokenOut
+        bytes swapData0;
+        bytes swapData1;
+        // If isCollect and tokenOut is native, whether to unwrap
+        bool isUnwrapNative;
     }
 
     /// @notice Set the fee limit and collector
@@ -137,84 +152,25 @@ interface IAutomanCommon is ISwapRouterCommon {
     /// @return amount1 The amount of token1 spent
     function increaseLiquidityFromTokenIn(
         IUniV3NPM.IncreaseLiquidityParams memory params,
-        // params.amount0Desired = The amount of tokenIn to swap for token0
-        // params.amount1Desired = The amount of tokenIn to swap for token1
         address tokenIn,
-        uint256 tokenInFeeAmount, // The amount of tokenIn to send to feeCollector
+        uint256 tokenInFeeAmount,
         bytes calldata swapData0,
         bytes calldata swapData1
     ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 
-    /// @notice Decreases the amount of liquidity in a position and accounts it to the position
-    /// @dev Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
-    /// It is applied on the principal amounts excluding trading fees.
+    /// @notice Decreases the amount of liquidity in a position and optionally swaps to tokenOut
     /// @param params tokenId The ID of the token for which liquidity is being decreased,
     /// liquidity The amount by which liquidity will be decreased,
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
+    /// @param collectConfig The collect config for collected fees
     /// @return amount0 The amount of token0 returned minus fees
     /// @return amount1 The amount of token1 returned minus fees
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bool isUnwrapNative
+        IAutomanCommon.CollectConfig calldata collectConfig
     ) external returns (uint256 amount0, uint256 amount1);
-
-    /// @notice Decreases the amount of liquidity in a position and accounts it to the position using permit
-    /// @dev Slippage check is delegated to `NonfungiblePositionManager` via `DecreaseLiquidityParams`.
-    /// It is applied on the principal amounts excluding trading fees.
-    /// @param params tokenId The ID of the token for which liquidity is being decreased,
-    /// liquidity The amount by which liquidity will be decreased,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
-    /// @param permitDeadline The deadline of the permit signature
-    /// @param v The recovery byte of the signature
-    /// @param r Half of the ECDSA signature pair
-    /// @param s Half of the ECDSA signature pair
-    /// @return amount0 The amount of token0 returned minus fees
-    /// @return amount1 The amount of token1 returned minus fees
-    function decreaseLiquidity(
-        INPM.DecreaseLiquidityParams memory params,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bool isUnwrapNative,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external returns (uint256 amount0, uint256 amount1);
-
-    /// @notice Decreases the amount of liquidity in a position and swaps to a single token
-    /// @param params tokenId The ID of the token for which liquidity is being decreased,
-    /// liquidity The amount by which liquidity will be decreased,
-    /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
-    /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @param tokenOut The desired tokenOut
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param swapData0 The swap data for swapping from token0 to tokenOut
-    /// @param swapData1 The swap data for swapping from token1 to tokenOut
-    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
-    /// @return tokenOutAmount The total amount of desired token returned minus fees
-    function decreaseLiquidityToTokenOut(
-        INPM.DecreaseLiquidityParams memory params,
-        address tokenOut,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData0,
-        bytes calldata swapData1,
-        bool isUnwrapNative
-    ) external returns (uint256 tokenOutAmount);
 
     /// @notice Decreases the amount of liquidity in a position and swaps to a single token using permit
     /// @param params tokenId The ID of the token for which liquidity is being decreased,
@@ -222,24 +178,15 @@ interface IAutomanCommon is ISwapRouterCommon {
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param tokenOut The desired tokenOut
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
-    /// @param swapData0 The swap data for swapping token0 to tokenOut
-    /// @param swapData1 The swap data for swapping token1 to tokenOut
-    /// @param isUnwrapNative Whether to unwrap WETH and send native ETH
+    /// @param collectConfig The collect config for collected fees
     /// @param permit The signature permit
-    /// @return tokenOutAmount The total amount of desired token returned minus fees
-    function decreaseLiquidityToTokenOut(
+    /// @return amount0 The amount of token0 returned minus fees
+    /// @return amount1 The amount of token1 returned minus fees
+    function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        address tokenOut,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData0,
-        bytes calldata swapData1,
-        bool isUnwrapNative,
+        IAutomanCommon.CollectConfig calldata collectConfig,
         Permit calldata permit
-    ) external returns (uint256 tokenOutAmount);
+    ) external returns (uint256 amount0, uint256 amount1);
 
     /// @notice Reinvests all fees owed to a specific position to the same position using optimal swap
     /// @param params tokenId The ID of the token for which liquidity is being increased,
@@ -271,10 +218,7 @@ interface IAutomanCommon is ISwapRouterCommon {
     /// @param token0FeeAmount The amount of token0 to send to feeCollector
     /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
-    /// @param permitDeadline The deadline of the permit signature
-    /// @param v The recovery byte of the signature
-    /// @param r Half of the ECDSA signature pair
-    /// @param s Half of the ECDSA signature pair
+    /// @param permit The signature permit
     /// @return liquidity The new liquidity amount as a result of the increase
     /// @return amount0 The amount of token0 to achieve resulting liquidity
     /// @return amount1 The amount of token1 to achieve resulting liquidity
@@ -283,10 +227,7 @@ interface IAutomanCommon is ISwapRouterCommon {
         uint256 token0FeeAmount,
         uint256 token1FeeAmount,
         bytes calldata swapData,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        Permit calldata permit
     ) external returns (uint128 liquidity, uint256 amount0, uint256 amount1);
 }
 
@@ -388,9 +329,9 @@ interface IAutomanUniV3MintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param tokenId The ID of the position to rebalance
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
+    /// @param isCollect If true, collect fees to owner's wallet. If false, roll fees into new position
+    /// @param collectConfig The collect config for collected fees
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
     /// @return amount0 The amount of token0 in the new position
@@ -398,9 +339,9 @@ interface IAutomanUniV3MintRebalance {
     function rebalance(
         IUniV3NPM.MintParams memory params,
         uint256 tokenId,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData
+        bytes calldata swapData,
+        bool isCollect,
+        IAutomanCommon.CollectConfig calldata collectConfig
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range using permit
@@ -417,13 +358,10 @@ interface IAutomanUniV3MintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param tokenId The ID of the position to rebalance
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
-    /// @param permitDeadline The deadline of the permit signature
-    /// @param v The recovery byte of the signature
-    /// @param r Half of the ECDSA signature pair
-    /// @param s Half of the ECDSA signature pair
+    /// @param isCollect If true, collect fees to owner's wallet. If false, roll fees into new position
+    /// @param collectConfig The collect config for collected fees
+    /// @param permit The signature permit
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
     /// @return amount0 The amount of token0 in the new position
@@ -431,13 +369,10 @@ interface IAutomanUniV3MintRebalance {
     function rebalance(
         IUniV3NPM.MintParams memory params,
         uint256 tokenId,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
         bytes calldata swapData,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        bool isCollect,
+        IAutomanCommon.CollectConfig calldata collectConfig,
+        IAutomanCommon.Permit calldata permit
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 }
 
@@ -539,9 +474,9 @@ interface IAutomanSlipStreamMintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param tokenId The ID of the position to rebalance
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
+    /// @param isCollect If true, collect fees to owner's wallet. If false, roll fees into new position
+    /// @param collectConfig The collect config for collected fees
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
     /// @return amount0 The amount of token0 in the new position
@@ -549,9 +484,9 @@ interface IAutomanSlipStreamMintRebalance {
     function rebalance(
         ISlipStreamNPM.MintParams memory params,
         uint256 tokenId,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
-        bytes calldata swapData
+        bytes calldata swapData,
+        bool isCollect,
+        IAutomanCommon.CollectConfig calldata collectConfig
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range using permit
@@ -568,13 +503,10 @@ interface IAutomanSlipStreamMintRebalance {
     /// recipient The recipient of the minted position
     /// deadline The time by which the transaction must be included to effect the change
     /// @param tokenId The ID of the position to rebalance
-    /// @param token0FeeAmount The amount of token0 to send to feeCollector
-    /// @param token1FeeAmount The amount of token1 to send to feeCollector
     /// @param swapData The address of the external router and call data
-    /// @param permitDeadline The deadline of the permit signature
-    /// @param v The recovery byte of the signature
-    /// @param r Half of the ECDSA signature pair
-    /// @param s Half of the ECDSA signature pair
+    /// @param isCollect If true, collect fees to owner's wallet. If false, roll fees into new position
+    /// @param collectConfig The collect config for collected fees
+    /// @param permit The signature permit
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
     /// @return amount0 The amount of token0 in the new position
@@ -582,13 +514,10 @@ interface IAutomanSlipStreamMintRebalance {
     function rebalance(
         ISlipStreamNPM.MintParams memory params,
         uint256 tokenId,
-        uint256 token0FeeAmount,
-        uint256 token1FeeAmount,
         bytes calldata swapData,
-        uint256 permitDeadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
+        bool isCollect,
+        IAutomanCommon.CollectConfig calldata collectConfig,
+        IAutomanCommon.Permit calldata permit
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 }
 

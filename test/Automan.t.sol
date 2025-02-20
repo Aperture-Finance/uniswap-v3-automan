@@ -425,15 +425,18 @@ contract UniV3AutomanTest is UniHandler {
         liquidityDesired = uint128(bound(liquidityDesired, 1, liquidity));
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
+        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
-            /* token0FeeAmount= */ 0,
-            /* token1FeeAmount= */ 0,
-            /* isUnwrapNative= */ true,
-            deadline,
-            v,
-            r,
-            s
+            IAutomanCommon.CollectConfig(
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0,
+                /* tokenOut= */ address(0),
+                /* swapData0= */ new bytes(0),
+                /* swapData1= */ new bytes(0),
+                /* isUnwrapNative= */ true
+            ),
+            permit
         );
     }
 
@@ -445,7 +448,7 @@ contract UniV3AutomanTest is UniHandler {
         uint256 balanceBefore = zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this));
         // Approve automan to decrease liquidity
         npm.approve(address(automan), tokenId);
-        uint256 amount = _decreaseLiquiditySingle(
+        (uint256 amount0, uint256 amount1) = _decreaseLiquiditySingle(
             tokenId,
             liquidityDesired,
             zeroForOne,
@@ -453,14 +456,14 @@ contract UniV3AutomanTest is UniHandler {
             /* token1FeeAmount= */ 0
         );
         assertEq(
-            zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this)),
-            balanceBefore + amount,
+            balanceOf(zeroForOne ? token1 : token0, address(this)),
+            balanceBefore + (zeroForOne ? amount1 : amount0),
             "amount mismatch"
         );
     }
 
     /// @dev Decreasing liquidity with permit
-    function testFuzz_DecreaseLiquiditySingl2e_WithPermit(uint128 liquidityDesired, bool zeroForOne) public {
+    function testFuzz_DecreaseLiquiditySingle_WithPermit(uint128 liquidityDesired, bool zeroForOne) public {
         uint256 tokenId = thisTokenId;
         (, , address token0, address token1, , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(
             tokenId
@@ -469,14 +472,16 @@ contract UniV3AutomanTest is UniHandler {
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = sign(permitDigest(address(automan), tokenId, deadline));
         IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
-        automan.decreaseLiquidityToTokenOut(
+        automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
-            /* tokenOut= */ zeroForOne ? token1 : token0,
-            /* token0FeeAmount= */ 0,
-            /* token1FeeAmount= */ 0,
-            /* swapData0= */ new bytes(0),
-            /* swapData1= */ new bytes(0),
-            /* isUnwrapNative= */ true,
+            IAutomanCommon.CollectConfig(
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0,
+                /* tokenOut= */ zeroForOne ? token1 : token0,
+                /* swapData0= */ new bytes(0),
+                /* swapData1= */ new bytes(0),
+                /* isUnwrapNative= */ true
+            ),
             permit
         );
     }
@@ -507,6 +512,7 @@ contract UniV3AutomanTest is UniHandler {
         uint256 balance1Before = balanceOf(token1, user);
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
+        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         uint256 gasBefore = gasleft();
         (, , , , , , , uint128 liquidity, , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         (uint256 amount0, uint256 amount1) = automan.decreaseLiquidity(
@@ -517,13 +523,15 @@ contract UniV3AutomanTest is UniHandler {
                 amount1Min: 0,
                 deadline: deadline
             }),
-            /* token0FeeAmount= */ 0,
-            /* token1FeeAmount= */ 0,
-            /* isUnwrapNative= */ true,
-            deadline,
-            v,
-            r,
-            s
+            IAutomanCommon.CollectConfig(
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0,
+                /* tokenOut= */ address(0),
+                /* swapData0= */ new bytes(0),
+                /* swapData1= */ new bytes(0),
+                /* isUnwrapNative= */ true
+            ),
+            permit
         );
         console2.log("gas used", gasBefore - gasleft());
         assertBalanceMatch(user, balance0Before, balance1Before, amount0, amount1, true);
@@ -535,15 +543,15 @@ contract UniV3AutomanTest is UniHandler {
         uint256 balanceBefore = zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this));
         // Approve automan to remove liquidity
         npm.approve(address(automan), tokenId);
-        uint256 amount = _removeLiquiditySingle(
+        (uint256 amount0, uint256 amount1) = _removeLiquiditySingle(
             tokenId,
             zeroForOne,
             /* token0FeeAmount= */ 123,
             /* token1FeeAmount= */ 456
         );
         assertEq(
-            zeroForOne ? balanceOf(token1, address(this)) : balanceOf(token0, address(this)),
-            balanceBefore + amount,
+            balanceOf(zeroForOne ? token1 : token0, address(this)),
+            balanceBefore + (zeroForOne ? amount1 : amount0),
             "amount mismatch"
         );
         assertEq(balanceOf(token0, collector), 123, "!fee");
@@ -559,7 +567,7 @@ contract UniV3AutomanTest is UniHandler {
             tokenId
         );
         IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
-        automan.decreaseLiquidityToTokenOut(
+        automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams({
                 tokenId: tokenId,
                 liquidity: liquidity,
@@ -567,12 +575,14 @@ contract UniV3AutomanTest is UniHandler {
                 amount1Min: 0,
                 deadline: deadline
             }),
-            /* tokenOut= */ zeroForOne ? token1 : token0,
-            /* token0FeeAmount= */ 0,
-            /* token1FeeAmount= */ 0,
-            /* swapData0= */ new bytes(0),
-            /* swapData1= */ new bytes(0),
-            /* isUnwrapNative= */ true,
+            IAutomanCommon.CollectConfig(
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0,
+                /* tokenOut= */ zeroForOne ? token1 : token0,
+                /* swapData0= */ new bytes(0),
+                /* swapData1= */ new bytes(0),
+                /* isUnwrapNative= */ true
+            ),
             permit
         );
     }
@@ -613,7 +623,12 @@ contract UniV3AutomanTest is UniHandler {
         swapBackAndForth(amountIn, zeroForOne);
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
-        _reinvest(tokenId, /* token0FeeAmount= */ 1, /* token1FeeAmount= */ 2, deadline, v, r, s);
+        _reinvest(
+            tokenId,
+            /* token0FeeAmount= */ 1,
+            /* token1FeeAmount= */ 2,
+            IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s})
+        );
     }
 
     /// @dev Test rebalancing a v3 LP position
@@ -643,9 +658,16 @@ contract UniV3AutomanTest is UniHandler {
                         sqrtPriceX96: 0
                     }),
                     thisTokenId,
-                    /* token0FeeAmount= */ 123,
-                    /* token1FeeAmount= */ 456,
-                    new bytes(0)
+                    /* swapData= */ new bytes(0),
+                    /* isCollect= */ false,
+                    IAutomanCommon.CollectConfig({
+                        token0FeeAmount: 123,
+                        token1FeeAmount: 456,
+                        tokenOut: address(0),
+                        swapData0: new bytes(0),
+                        swapData1: new bytes(0),
+                        isUnwrapNative: true
+                    })
                 )
             returns (uint256 newTokenId, uint128 liquidity, uint256, uint256) {
                 assertEq(npm.ownerOf(newTokenId), address(this), "owner mismatch");
@@ -673,9 +695,16 @@ contract UniV3AutomanTest is UniHandler {
                         deadline: block.timestamp
                     }),
                     thisTokenId,
-                    /* token0FeeAmount= */ 123,
-                    /* token1FeeAmount= */ 456,
-                    new bytes(0)
+                    /* swapData= */ new bytes(0),
+                    /* isCollect= */ false,
+                    IAutomanCommon.CollectConfig({
+                        token0FeeAmount: 123,
+                        token1FeeAmount: 456,
+                        tokenOut: address(0),
+                        swapData0: new bytes(0),
+                        swapData1: new bytes(0),
+                        isUnwrapNative: true
+                    })
                 )
             returns (uint256 newTokenId, uint128 liquidity, uint256, uint256) {
                 assertEq(npm.ownerOf(newTokenId), address(this), "owner mismatch");
@@ -694,6 +723,7 @@ contract UniV3AutomanTest is UniHandler {
         uint256 tokenId = userTokenId;
         uint256 deadline = block.timestamp;
         (uint8 v, bytes32 r, bytes32 s) = permitSig(address(automan), tokenId, deadline, pk);
+        IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         if (dex == DEX.SlipStream) {
             tickSpacing = 100;
         } else {
@@ -718,13 +748,17 @@ contract UniV3AutomanTest is UniHandler {
                         sqrtPriceX96: 0
                     }),
                     tokenId,
-                    /* token0FeeAmount= */ 123,
-                    /* token1FeeAmount= */ 456,
-                    new bytes(0),
-                    deadline,
-                    v,
-                    r,
-                    s
+                    /* swapData= */ new bytes(0),
+                    /* isCollect= */ false,
+                    IAutomanCommon.CollectConfig({
+                        token0FeeAmount: 123,
+                        token1FeeAmount: 456,
+                        tokenOut: address(0),
+                        swapData0: new bytes(0),
+                        swapData1: new bytes(0),
+                        isUnwrapNative: true
+                    }),
+                    permit
                 )
             {} catch Error(string memory reason) {
                 assertEq(reason, "LO", "only catch liquidity overflow");
@@ -746,13 +780,17 @@ contract UniV3AutomanTest is UniHandler {
                         deadline: deadline
                     }),
                     tokenId,
-                    /* token0FeeAmount= */ 123,
-                    /* token1FeeAmount= */ 456,
-                    new bytes(0),
-                    deadline,
-                    v,
-                    r,
-                    s
+                    /* swapData= */ new bytes(0),
+                    /* isCollect= */ false,
+                    IAutomanCommon.CollectConfig({
+                        token0FeeAmount: 123,
+                        token1FeeAmount: 456,
+                        tokenOut: address(0),
+                        swapData0: new bytes(0),
+                        swapData1: new bytes(0),
+                        isUnwrapNative: true
+                    }),
+                    permit
                 )
             {} catch Error(string memory reason) {
                 assertEq(reason, "LO", "only catch liquidity overflow");
