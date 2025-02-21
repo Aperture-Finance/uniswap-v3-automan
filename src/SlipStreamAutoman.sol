@@ -303,7 +303,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
         uint256 amount1,
         bytes calldata swapData0,
         bytes calldata swapData1
-    ) private {
+    ) private returns (uint256, uint256) {
         unchecked {
             SlipStreamPoolAddress.PoolKey memory poolKey;
             poolKey.tickSpacing = position.tickSpacing;
@@ -334,6 +334,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             // Approve npm to spend & mint.
             if (amount0 != 0) position.token0.safeApprove(address(npm), amount0);
             if (amount1 != 0) position.token1.safeApprove(address(npm), amount1);
+            return (amount0, amount1);
         }
     }
 
@@ -599,7 +600,7 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
                 }
             }
         }
-        _swapApproveNpm(
+        (params.amount0Desired, params.amount1Desired) = _swapApproveNpm(
             tokenIn,
             SlipStreamPosition({
                 token0: params.token0,
@@ -692,7 +693,14 @@ contract SlipStreamAutoman is Ownable, SlipStreamSwapRouter, IAutomanCommon, IAu
             }
         }
         SlipStreamPosition memory position = _positions(params.tokenId);
-        _swapApproveNpm(tokenIn, position, params.amount0Desired, params.amount1Desired, swapData0, swapData1);
+        (params.amount0Desired, params.amount1Desired) = _swapApproveNpm(
+            tokenIn,
+            position,
+            params.amount0Desired,
+            params.amount1Desired,
+            swapData0,
+            swapData1
+        );
         (liquidity, amount0, amount1) = _increaseLiquidity(params, position.token0, position.token1);
         // Refund any unswapped tokenIn to the owner.
         unchecked {
