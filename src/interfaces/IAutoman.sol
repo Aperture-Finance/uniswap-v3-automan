@@ -42,18 +42,6 @@ interface IAutomanCommon is ISwapRouterCommon {
         uint96 feeLimitPips;
     }
 
-    // Signature permit struct.
-    struct Permit {
-        // The deadline of the permit signature
-        uint256 deadline;
-        // The recovery byte of the signature
-        uint8 v;
-        // Half of the ECDSA signature pair
-        bytes32 r;
-        // Half of the ECDSA signature pair
-        bytes32 s;
-    }
-
     struct CollectConfig {
         // The amount of token0 to send to feeCollector
         uint256 token0FeeAmount;
@@ -67,6 +55,18 @@ interface IAutomanCommon is ISwapRouterCommon {
         bytes swapData1;
         // If isCollect and tokenOut is native, whether to unwrap
         bool isUnwrapNative;
+    }
+
+    // Signature permit struct.
+    struct Permit {
+        // The deadline of the permit signature
+        uint256 deadline;
+        // The recovery byte of the signature
+        uint8 v;
+        // Half of the ECDSA signature pair
+        bytes32 r;
+        // Half of the ECDSA signature pair
+        bytes32 s;
     }
 
     /// @notice Set the fee limit and collector
