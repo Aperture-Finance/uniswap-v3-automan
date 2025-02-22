@@ -337,40 +337,42 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
     function _swapRefund(
         Position memory position,
         address recipient,
-        address tokenOut,
         uint256 amount0,
         uint256 amount1,
-        bytes calldata swapData0,
-        bytes calldata swapData1,
-        bool isUnwrapNative
+        IAutomanCommon.CollectConfig calldata collectConfig
     ) private returns (uint256, uint256) {
         unchecked {
             PoolKey memory poolKey;
             poolKey.fee = position.fee;
-            // Swap token0 for tokenOut, and refund any unswapped token0 to the recipient.
-            if (tokenOut != address(0) && position.token0 != tokenOut) {
-                bool zeroForOne = position.token0 < tokenOut;
-                (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(tokenOut, position.token0);
-                _swapFromTokenInToTokenOut(poolKey, amount0, zeroForOne, swapData0);
-            }
-            // Swap token1 for tokenOut, and refund any unswapped token1 to the recipient.
-            if (tokenOut != address(0) && position.token1 != tokenOut) {
-                bool zeroForOne = position.token1 < tokenOut;
-                (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(tokenOut, position.token1);
-                _swapFromTokenInToTokenOut(poolKey, amount1, zeroForOne, swapData1);
+            if (collectConfig.tokenOut != address(0)) {
+                // Swap token0 for tokenOut, and refund any unswapped token0 to the recipient.
+                if (collectConfig.tokenOut != position.token0) {
+                    bool zeroForOne = position.token0 < collectConfig.tokenOut;
+                    (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(collectConfig.tokenOut, position.token0);
+                    _swapFromTokenInToTokenOut(poolKey, amount0, zeroForOne, collectConfig.swapData0);
+                }
+                // Swap token1 for tokenOut, and refund any unswapped token1 to the recipient.
+                if (collectConfig.tokenOut != position.token1) {
+                    bool zeroForOne = position.token1 < collectConfig.tokenOut;
+                    (poolKey.token0, poolKey.token1) = zeroForOne.switchIf(collectConfig.tokenOut, position.token1);
+                    _swapFromTokenInToTokenOut(poolKey, amount1, zeroForOne, collectConfig.swapData1);
+                }
             }
             // Send token0, token1 (any amount unable to be swapped), and tokenOut to the recipient.
             amount0 = ERC20Callee.wrap(position.token0).balanceOf(address(this));
-            if (amount0 != 0) {
-                refund(position.token0, recipient, amount0, isUnwrapNative);
-            }
             amount1 = ERC20Callee.wrap(position.token1).balanceOf(address(this));
-            if (amount1 != 0) {
-                refund(position.token1, recipient, amount1, isUnwrapNative);
+            uint256 tokenOutAmount = ERC20Callee.wrap(collectConfig.tokenOut).balanceOf(address(this));
+            if (tokenOutAmount < collectConfig.tokenOutMin) revert InsufficientAmount();
+            if (amount0 != 0) {
+                refund(position.token0, recipient, amount0, collectConfig.isUnwrapNative);
             }
-            uint256 tokenOutAmount = ERC20Callee.wrap(tokenOut).balanceOf(address(this));
+            if (amount1 != 0) {
+                refund(position.token1, recipient, amount1, collectConfig.isUnwrapNative);
+            }
+            // Check tokenOutAmount again in case tokenOut == token0 or token1.
+            tokenOutAmount = ERC20Callee.wrap(collectConfig.tokenOut).balanceOf(address(this));
             if (tokenOutAmount != 0) {
-                refund(tokenOut, recipient, tokenOutAmount, isUnwrapNative);
+                refund(collectConfig.tokenOut, recipient, tokenOutAmount, collectConfig.isUnwrapNative);
             }
             return (amount0, amount1);
         }
@@ -397,12 +399,9 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
         (amount0, amount1) = _swapRefund(
             position,
             NPMCaller.ownerOf(npm, params.tokenId),
-            collectConfig.tokenOut,
             amount0,
             amount1,
-            collectConfig.swapData0,
-            collectConfig.swapData1,
-            collectConfig.isUnwrapNative
+            collectConfig
         );
         if (params.liquidity == position.liquidity) {
             // Burn token when removing all liquidity.
@@ -483,12 +482,9 @@ abstract contract Automan is Ownable, SwapRouter, IAutomanCommon, IAutomanUniV3M
             _swapRefund(
                 _positions(tokenId),
                 /* recipient= */ NPMCaller.ownerOf(npm, tokenId),
-                collectConfig.tokenOut,
                 amount0,
                 amount1,
-                collectConfig.swapData0,
-                collectConfig.swapData1,
-                collectConfig.isUnwrapNative
+                collectConfig
             );
         }
         // Remove liquidity and collect the tokens owed

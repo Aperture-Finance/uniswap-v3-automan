@@ -428,14 +428,15 @@ contract UniV3AutomanTest is UniHandler {
         IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
-            IAutomanCommon.CollectConfig(
-                /* token0FeeAmount= */ 0,
-                /* token1FeeAmount= */ 0,
-                /* tokenOut= */ address(0),
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            ),
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: 0,
+                token1FeeAmount: 0,
+                tokenOut: address(0),
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            }),
             permit
         );
     }
@@ -474,14 +475,15 @@ contract UniV3AutomanTest is UniHandler {
         IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
-            IAutomanCommon.CollectConfig(
-                /* token0FeeAmount= */ 0,
-                /* token1FeeAmount= */ 0,
-                /* tokenOut= */ zeroForOne ? token1 : token0,
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            ),
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: 0,
+                token1FeeAmount: 0,
+                tokenOut: zeroForOne ? token1 : token0,
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            }),
             permit
         );
     }
@@ -523,14 +525,15 @@ contract UniV3AutomanTest is UniHandler {
                 amount1Min: 0,
                 deadline: deadline
             }),
-            IAutomanCommon.CollectConfig(
-                /* token0FeeAmount= */ 0,
-                /* token1FeeAmount= */ 0,
-                /* tokenOut= */ address(0),
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            ),
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: 0,
+                token1FeeAmount: 0,
+                tokenOut: address(0),
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            }),
             permit
         );
         console2.log("gas used", gasBefore - gasleft());
@@ -575,14 +578,15 @@ contract UniV3AutomanTest is UniHandler {
                 amount1Min: 0,
                 deadline: deadline
             }),
-            IAutomanCommon.CollectConfig(
-                /* token0FeeAmount= */ 0,
-                /* token1FeeAmount= */ 0,
-                /* tokenOut= */ zeroForOne ? token1 : token0,
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            ),
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: 0,
+                token1FeeAmount: 0,
+                tokenOut: zeroForOne ? token1 : token0,
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            }),
             permit
         );
     }
@@ -664,6 +668,7 @@ contract UniV3AutomanTest is UniHandler {
                         token0FeeAmount: 123,
                         token1FeeAmount: 456,
                         tokenOut: address(0),
+                        tokenOutMin: 0,
                         swapData0: new bytes(0),
                         swapData1: new bytes(0),
                         isUnwrapNative: true
@@ -701,6 +706,7 @@ contract UniV3AutomanTest is UniHandler {
                         token0FeeAmount: 123,
                         token1FeeAmount: 456,
                         tokenOut: address(0),
+                        tokenOutMin: 0,
                         swapData0: new bytes(0),
                         swapData1: new bytes(0),
                         isUnwrapNative: true
@@ -754,6 +760,7 @@ contract UniV3AutomanTest is UniHandler {
                         token0FeeAmount: 123,
                         token1FeeAmount: 456,
                         tokenOut: address(0),
+                        tokenOutMin: 0,
                         swapData0: new bytes(0),
                         swapData1: new bytes(0),
                         isUnwrapNative: true
@@ -786,6 +793,7 @@ contract UniV3AutomanTest is UniHandler {
                         token0FeeAmount: 123,
                         token1FeeAmount: 456,
                         tokenOut: address(0),
+                        tokenOutMin: 0,
                         swapData0: new bytes(0),
                         swapData1: new bytes(0),
                         isUnwrapNative: true

@@ -302,14 +302,15 @@ contract UniHandler is UniBase {
     ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
-            IAutomanCommon.CollectConfig(
-                token0FeeAmount,
-                token1FeeAmount,
-                /* tokenOut= */ address(0),
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            )
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: token0FeeAmount,
+                token1FeeAmount: token1FeeAmount,
+                tokenOut: address(0),
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            })
         );
     }
 
@@ -324,14 +325,15 @@ contract UniHandler is UniBase {
         (, , address token0, address token1, , , , , , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         (amount0, amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
-            IAutomanCommon.CollectConfig(
-                token0FeeAmount,
-                token1FeeAmount,
-                /* tokenOut= */ zeroForOne ? token1 : token0,
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            )
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: token0FeeAmount,
+                token1FeeAmount: token1FeeAmount,
+                tokenOut: zeroForOne ? token1 : token0,
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            })
         );
     }
 
@@ -345,14 +347,15 @@ contract UniHandler is UniBase {
     ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
-            IAutomanCommon.CollectConfig(
-                token0FeeAmount,
-                token1FeeAmount,
-                tokenOut,
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            )
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: token0FeeAmount,
+                token1FeeAmount: token1FeeAmount,
+                tokenOut: tokenOut,
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            })
         );
     }
 
@@ -371,14 +374,15 @@ contract UniHandler is UniBase {
                 amount1Min: 0,
                 deadline: block.timestamp
             }),
-            IAutomanCommon.CollectConfig(
-                token0FeeAmount,
-                token1FeeAmount,
-                /* tokenOut= */ address(0),
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            )
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: token0FeeAmount,
+                token1FeeAmount: token1FeeAmount,
+                tokenOut: address(0),
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            })
         );
     }
 
@@ -400,14 +404,15 @@ contract UniHandler is UniBase {
                 amount1Min: 0,
                 deadline: block.timestamp
             }),
-            IAutomanCommon.CollectConfig(
-                token0FeeAmount,
-                token1FeeAmount,
-                /* tokenOut= */ zeroForOne ? token1 : token0,
-                /* swapData0= */ new bytes(0),
-                /* swapData1= */ new bytes(0),
-                /* isUnwrapNative= */ true
-            )
+            IAutomanCommon.CollectConfig({
+                token0FeeAmount: token0FeeAmount,
+                token1FeeAmount: token1FeeAmount,
+                tokenOut: zeroForOne ? token1 : token0,
+                tokenOutMin: 0,
+                swapData0: new bytes(0),
+                swapData1: new bytes(0),
+                isUnwrapNative: true
+            })
         );
     }
 
@@ -485,6 +490,7 @@ contract UniHandler is UniBase {
                     token0FeeAmount: token0FeeAmount,
                     token1FeeAmount: token1FeeAmount,
                     tokenOut: address(0),
+                    tokenOutMin: 0,
                     swapData0: new bytes(0),
                     swapData1: new bytes(0),
                     isUnwrapNative: true
@@ -512,6 +518,7 @@ contract UniHandler is UniBase {
                     token0FeeAmount: token0FeeAmount,
                     token1FeeAmount: token1FeeAmount,
                     tokenOut: address(0),
+                    tokenOutMin: 0,
                     swapData0: new bytes(0),
                     swapData1: new bytes(0),
                     isUnwrapNative: true

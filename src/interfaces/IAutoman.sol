@@ -50,6 +50,8 @@ interface IAutomanCommon is ISwapRouterCommon {
         // The token to collect. E.g. allows collecting volatile pairs to stablecoin.
         // Use address(0) to collect as same pair
         address tokenOut;
+        // The minimum amount of tokenOut to receive
+        uint256 tokenOutMin;
         // If isCollect and tokenOut, swapData for swapping collected fees to tokenOut
         bytes swapData0;
         bytes swapData1;
