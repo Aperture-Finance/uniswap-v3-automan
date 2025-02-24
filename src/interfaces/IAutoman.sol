@@ -42,7 +42,7 @@ interface IAutomanCommon is ISwapRouterCommon {
         uint96 feeLimitPips;
     }
 
-    struct CollectConfig {
+    struct ZapOutParams {
         // The amount of token0 to send to feeCollector
         uint256 token0FeeAmount;
         // The amount of token1 to send to feeCollector
@@ -100,21 +100,6 @@ interface IAutomanCommon is ISwapRouterCommon {
         uint256 amount1Desired
     ) external view returns (uint256 amountIn, uint256 amountOut, bool zeroForOne, uint160 sqrtPriceX96);
 
-    /// @notice Increases the amount of liquidity in a position, with tokens paid by the `msg.sender`
-    /// @dev Anyone can increase the liquidity of a position, but the caller must pay the tokens
-    /// @param params tokenId The ID of the token for which liquidity is being increased,
-    /// amount0Desired The desired amount of token0 to be spent,
-    /// amount1Desired The desired amount of token1 to be spent,
-    /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check,
-    /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check,
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @return liquidity The new liquidity amount as a result of the increase
-    /// @return amount0 The amount of token0 to achieve resulting liquidity
-    /// @return amount1 The amount of token1 to achieve resulting liquidity
-    function increaseLiquidity(
-        INPM.IncreaseLiquidityParams memory params
-    ) external payable returns (uint128 liquidity, uint256 amount0, uint256 amount1);
-
     /// @notice Increases the amount of liquidity in a position using optimal swap
     /// @dev Anyone can increase the liquidity of a position, but the caller must pay the tokens
     /// @param params tokenId The ID of the token for which liquidity is being increased,
@@ -166,12 +151,12 @@ interface IAutomanCommon is ISwapRouterCommon {
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param collectConfig The collect config for collected fees
+    /// @param zapOutParams The zap out params
     /// @return amount0 The amount of token0 returned minus fees
     /// @return amount1 The amount of token1 returned minus fees
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        IAutomanCommon.CollectConfig calldata collectConfig
+        IAutomanCommon.ZapOutParams calldata zapOutParams
     ) external returns (uint256 amount0, uint256 amount1);
 
     /// @notice Decreases the amount of liquidity in a position and swaps to a single token using permit
@@ -180,13 +165,13 @@ interface IAutomanCommon is ISwapRouterCommon {
     /// amount0Min The minimum amount of token0 that should be accounted for the burned liquidity,
     /// amount1Min The minimum amount of token1 that should be accounted for the burned liquidity,
     /// deadline The time by which the transaction must be included to effect the change
-    /// @param collectConfig The collect config for collected fees
+    /// @param zapOutParams The zap out params
     /// @param permit The signature permit
     /// @return amount0 The amount of token0 returned minus fees
     /// @return amount1 The amount of token1 returned minus fees
     function decreaseLiquidity(
         INPM.DecreaseLiquidityParams memory params,
-        IAutomanCommon.CollectConfig calldata collectConfig,
+        IAutomanCommon.ZapOutParams calldata zapOutParams,
         Permit calldata permit
     ) external returns (uint256 amount0, uint256 amount1);
 
@@ -234,29 +219,6 @@ interface IAutomanCommon is ISwapRouterCommon {
 }
 
 interface IAutomanUniV3MintRebalance {
-    /// @notice Creates a new position wrapped in a NFT
-    /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
-    /// a method does not exist, i.e. the pool is assumed to be initialized.
-    /// @param params The params necessary to mint a position, encoded as `MintParams` in calldata
-    /// token0 The address of the token0 for a specific pool
-    /// token1 The address of the token1 for a specific pool
-    /// fee The fee associated with the pool
-    /// tickLower The lower tick of the position in which to add liquidity
-    /// tickUpper The upper tick of the position in which to add liquidity
-    /// amount0Desired The desired amount of token0 to be spent
-    /// amount1Desired The desired amount of token1 to be spent
-    /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check
-    /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check
-    /// recipient The recipient of the minted position
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @return tokenId The ID of the token that represents the minted position
-    /// @return liquidity The amount of liquidity for this position
-    /// @return amount0 The amount of token0 spent
-    /// @return amount1 The amount of token1 spent
-    function mint(
-        IUniV3NPM.MintParams memory params
-    ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
-
     /// @notice Creates a new position wrapped in a NFT using optimal swap
     /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
     /// a method does not exist, i.e. the pool is assumed to be initialized.
@@ -333,7 +295,7 @@ interface IAutomanUniV3MintRebalance {
     /// @param tokenId The ID of the position to rebalance
     /// @param swapData The address of the external router and call data
     /// @param isCollect If true, collect fees to owner's wallet. If false, roll fees into new position
-    /// @param collectConfig The collect config for collected fees
+    /// @param zapOutParams The zap out params
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
     /// @return amount0 The amount of token0 in the new position
@@ -343,7 +305,7 @@ interface IAutomanUniV3MintRebalance {
         uint256 tokenId,
         bytes calldata swapData,
         bool isCollect,
-        IAutomanCommon.CollectConfig calldata collectConfig
+        IAutomanCommon.ZapOutParams calldata zapOutParams
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range using permit
@@ -362,7 +324,7 @@ interface IAutomanUniV3MintRebalance {
     /// @param tokenId The ID of the position to rebalance
     /// @param swapData The address of the external router and call data
     /// @param isCollect If true, collect fees to owner's wallet. If false, roll fees into new position
-    /// @param collectConfig The collect config for collected fees
+    /// @param zapOutParams The zap out params
     /// @param permit The signature permit
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
@@ -373,35 +335,12 @@ interface IAutomanUniV3MintRebalance {
         uint256 tokenId,
         bytes calldata swapData,
         bool isCollect,
-        IAutomanCommon.CollectConfig calldata collectConfig,
+        IAutomanCommon.ZapOutParams calldata zapOutParams,
         IAutomanCommon.Permit calldata permit
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 }
 
 interface IAutomanSlipStreamMintRebalance {
-    /// @notice Creates a new position wrapped in a NFT
-    /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
-    /// a method does not exist, i.e. the pool is assumed to be initialized.
-    /// @param params The params necessary to mint a position, encoded as `MintParams` in calldata
-    /// token0 The address of the token0 for a specific pool
-    /// token1 The address of the token1 for a specific pool
-    /// tickSpacing The tick spacing associated with the pool
-    /// tickLower The lower tick of the position in which to add liquidity
-    /// tickUpper The upper tick of the position in which to add liquidity
-    /// amount0Desired The desired amount of token0 to be spent
-    /// amount1Desired The desired amount of token1 to be spent
-    /// amount0Min The minimum amount of token0 to spend, which serves as a slippage check
-    /// amount1Min The minimum amount of token1 to spend, which serves as a slippage check
-    /// recipient The recipient of the minted position
-    /// deadline The time by which the transaction must be included to effect the change
-    /// @return tokenId The ID of the token that represents the minted position
-    /// @return liquidity The amount of liquidity for this position
-    /// @return amount0 The amount of token0 spent
-    /// @return amount1 The amount of token1 spent
-    function mint(
-        ISlipStreamNPM.MintParams memory params
-    ) external payable returns (uint256 tokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
-
     /// @notice Creates a new position wrapped in a NFT using optimal swap
     /// @dev Call this when the pool does exist and is initialized. Note that if the pool is created but not initialized
     /// a method does not exist, i.e. the pool is assumed to be initialized.
@@ -478,7 +417,7 @@ interface IAutomanSlipStreamMintRebalance {
     /// @param tokenId The ID of the position to rebalance
     /// @param swapData The address of the external router and call data
     /// @param isCollect If true, collect fees to owner's wallet. If false, roll fees into new position
-    /// @param collectConfig The collect config for collected fees
+    /// @param zapOutParams The zap out params
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
     /// @return amount0 The amount of token0 in the new position
@@ -488,7 +427,7 @@ interface IAutomanSlipStreamMintRebalance {
         uint256 tokenId,
         bytes calldata swapData,
         bool isCollect,
-        IAutomanCommon.CollectConfig calldata collectConfig
+        IAutomanCommon.ZapOutParams calldata zapOutParams
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 
     /// @notice Rebalances a position to a new tick range using permit
@@ -507,7 +446,7 @@ interface IAutomanSlipStreamMintRebalance {
     /// @param tokenId The ID of the position to rebalance
     /// @param swapData The address of the external router and call data
     /// @param isCollect If true, collect fees to owner's wallet. If false, roll fees into new position
-    /// @param collectConfig The collect config for collected fees
+    /// @param zapOutParams The zap out params
     /// @param permit The signature permit
     /// @return newTokenId The ID of the new position
     /// @return liquidity The amount of liquidity in the new position
@@ -518,7 +457,7 @@ interface IAutomanSlipStreamMintRebalance {
         uint256 tokenId,
         bytes calldata swapData,
         bool isCollect,
-        IAutomanCommon.CollectConfig calldata collectConfig,
+        IAutomanCommon.ZapOutParams calldata zapOutParams,
         IAutomanCommon.Permit calldata permit
     ) external returns (uint256 newTokenId, uint128 liquidity, uint256 amount0, uint256 amount1);
 }

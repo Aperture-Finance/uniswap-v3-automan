@@ -98,7 +98,7 @@ contract UniHandler is UniBase {
         if (ok)
             if (dex == DEX.SlipStream) {
                 try
-                    IAutomanSlipStreamMintRebalance(address(automan)).mint{value: value}(
+                    IAutomanSlipStreamMintRebalance(address(automan)).mintOptimal{value: value}(
                         ISlipStreamNPM.MintParams({
                             token0: token0,
                             token1: token1,
@@ -112,17 +112,22 @@ contract UniHandler is UniBase {
                             recipient: recipient,
                             deadline: block.timestamp,
                             sqrtPriceX96: 0
-                        })
+                        }),
+                        /* swapData= */ new bytes(0),
+                        /* token0FeeAmount= */ 0,
+                        /* token1FeeAmount= */ 0
                     )
                 returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
                     tokenId = _tokenId;
-                    assertEq(_liquidity, liquidity, "liquidity mismatch");
+                    // No longer equal when using increaseLiquidityOptimal
+                    assertApproxEqRel(liquidity, _liquidity, /* maxPercentDelta=1%= */ 1e16, "liquidity mismatch");
+                    liquidity = _liquidity;
                 } catch Error(string memory reason) {
                     assertEq(reason, "LO", "only catch liquidity overflow");
                 }
             } else {
                 try
-                    IAutomanUniV3MintRebalance(address(automan)).mint{value: value}(
+                    IAutomanUniV3MintRebalance(address(automan)).mintOptimal{value: value}(
                         IUniV3NPM.MintParams({
                             token0: token0,
                             token1: token1,
@@ -135,11 +140,16 @@ contract UniHandler is UniBase {
                             amount1Min: 0,
                             recipient: recipient,
                             deadline: block.timestamp
-                        })
+                        }),
+                        /* swapData= */ new bytes(0),
+                        /* token0FeeAmount= */ 0,
+                        /* token1FeeAmount= */ 0
                     )
                 returns (uint256 _tokenId, uint128 _liquidity, uint256, uint256) {
                     tokenId = _tokenId;
-                    assertEq(_liquidity, liquidity, "liquidity mismatch");
+                    // No longer equal when using increaseLiquidityOptimal
+                    assertApproxEqRel(liquidity, _liquidity, /* maxPercentDelta=1%= */ 1e16, "liquidity mismatch");
+                    liquidity = _liquidity;
                 } catch Error(string memory reason) {
                     assertEq(reason, "LO", "only catch liquidity overflow");
                 }
@@ -243,7 +253,7 @@ contract UniHandler is UniBase {
         (bool ok, uint128 liquidity) = prepLiquidity(tickLower, tickUpper, amount0Desired, amount1Desired);
         if (ok && (uint256(liquidity) + posLiquidity) <= type(uint128).max)
             try
-                automan.increaseLiquidity{value: value}(
+                automan.increaseLiquidityOptimal{value: value}(
                     INPM.IncreaseLiquidityParams({
                         tokenId: tokenId,
                         amount0Desired: amount0Desired,
@@ -251,15 +261,19 @@ contract UniHandler is UniBase {
                         amount0Min: 0,
                         amount1Min: 0,
                         deadline: block.timestamp
-                    })
+                    }),
+                    /* swapData= */ new bytes(0),
+                    /* token0FeeAmount= */ 0,
+                    /* token1FeeAmount= */ 0
                 )
             returns (uint128 _liquidity, uint256, uint256) {
-                assertEq(_liquidity, liquidity, "liquidity mismatch");
-                return liquidity;
+                // No longer equal when using increaseLiquidityOptimal
+                assertApproxEqRel(liquidity, _liquidity, /* maxPercentDelta=1%= */ 1e16, "liquidity mismatch");
+                liquidity = _liquidity;
             } catch Error(string memory reason) {
                 assertEq(reason, "LO", "only catch liquidity overflow");
             }
-        return 0;
+        return liquidity;
     }
 
     /// @dev Increase liquidity with built-in optimal swap
@@ -302,7 +316,7 @@ contract UniHandler is UniBase {
     ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: token0FeeAmount,
                 token1FeeAmount: token1FeeAmount,
                 tokenOut: address(0),
@@ -325,7 +339,7 @@ contract UniHandler is UniBase {
         (, , address token0, address token1, , , , , , , , ) = IUniV3NPM(address(npm)).positions(tokenId);
         (amount0, amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: token0FeeAmount,
                 token1FeeAmount: token1FeeAmount,
                 tokenOut: zeroForOne ? token1 : token0,
@@ -347,7 +361,7 @@ contract UniHandler is UniBase {
     ) internal returns (uint256 amount0, uint256 amount1) {
         (amount0, amount1) = automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDelta, 0, 0, block.timestamp),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: token0FeeAmount,
                 token1FeeAmount: token1FeeAmount,
                 tokenOut: tokenOut,
@@ -374,7 +388,7 @@ contract UniHandler is UniBase {
                 amount1Min: 0,
                 deadline: block.timestamp
             }),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: token0FeeAmount,
                 token1FeeAmount: token1FeeAmount,
                 tokenOut: address(0),
@@ -404,7 +418,7 @@ contract UniHandler is UniBase {
                 amount1Min: 0,
                 deadline: block.timestamp
             }),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: token0FeeAmount,
                 token1FeeAmount: token1FeeAmount,
                 tokenOut: zeroForOne ? token1 : token0,
@@ -486,7 +500,7 @@ contract UniHandler is UniBase {
                 tokenId,
                 /* swapData= */ new bytes(0),
                 /* isCollect= */ false,
-                IAutomanCommon.CollectConfig({
+                IAutomanCommon.ZapOutParams({
                     token0FeeAmount: token0FeeAmount,
                     token1FeeAmount: token1FeeAmount,
                     tokenOut: address(0),
@@ -514,7 +528,7 @@ contract UniHandler is UniBase {
                 tokenId,
                 /* swapData= */ new bytes(0),
                 /* isCollect= */ false,
-                IAutomanCommon.CollectConfig({
+                IAutomanCommon.ZapOutParams({
                     token0FeeAmount: token0FeeAmount,
                     token1FeeAmount: token1FeeAmount,
                     tokenOut: address(0),

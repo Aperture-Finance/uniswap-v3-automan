@@ -227,7 +227,7 @@ contract UniV3AutomanTest is UniHandler {
         token1.safeApprove(address(automan), type(uint256).max);
         vm.expectRevert();
         if (dex == DEX.SlipStream) {
-            IAutomanSlipStreamMintRebalance(address(automan)).mint(
+            IAutomanSlipStreamMintRebalance(address(automan)).mintOptimal(
                 ISlipStreamNPM.MintParams({
                     token0: token1,
                     token1: token0,
@@ -241,10 +241,13 @@ contract UniV3AutomanTest is UniHandler {
                     recipient: address(this),
                     deadline: block.timestamp,
                     sqrtPriceX96: 0
-                })
+                }),
+                /* swapData= */ new bytes(0),
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0
             );
         } else {
-            IAutomanUniV3MintRebalance(address(automan)).mint(
+            IAutomanUniV3MintRebalance(address(automan)).mintOptimal(
                 IUniV3NPM.MintParams({
                     token0: token1,
                     token1: token0,
@@ -257,7 +260,10 @@ contract UniV3AutomanTest is UniHandler {
                     amount1Min: 0,
                     recipient: address(this),
                     deadline: block.timestamp
-                })
+                }),
+                /* swapData= */ new bytes(0),
+                /* token0FeeAmount= */ 0,
+                /* token1FeeAmount= */ 0
             );
         }
     }
@@ -428,7 +434,7 @@ contract UniV3AutomanTest is UniHandler {
         IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: 0,
                 token1FeeAmount: 0,
                 tokenOut: address(0),
@@ -475,7 +481,7 @@ contract UniV3AutomanTest is UniHandler {
         IAutomanCommon.Permit memory permit = IAutomanCommon.Permit({deadline: deadline, v: v, r: r, s: s});
         automan.decreaseLiquidity(
             INPM.DecreaseLiquidityParams(tokenId, liquidityDesired, 0, 0, deadline),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: 0,
                 token1FeeAmount: 0,
                 tokenOut: zeroForOne ? token1 : token0,
@@ -525,7 +531,7 @@ contract UniV3AutomanTest is UniHandler {
                 amount1Min: 0,
                 deadline: deadline
             }),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: 0,
                 token1FeeAmount: 0,
                 tokenOut: address(0),
@@ -578,7 +584,7 @@ contract UniV3AutomanTest is UniHandler {
                 amount1Min: 0,
                 deadline: deadline
             }),
-            IAutomanCommon.CollectConfig({
+            IAutomanCommon.ZapOutParams({
                 token0FeeAmount: 0,
                 token1FeeAmount: 0,
                 tokenOut: zeroForOne ? token1 : token0,
@@ -664,7 +670,7 @@ contract UniV3AutomanTest is UniHandler {
                     thisTokenId,
                     /* swapData= */ new bytes(0),
                     /* isCollect= */ false,
-                    IAutomanCommon.CollectConfig({
+                    IAutomanCommon.ZapOutParams({
                         token0FeeAmount: 123,
                         token1FeeAmount: 456,
                         tokenOut: address(0),
@@ -702,7 +708,7 @@ contract UniV3AutomanTest is UniHandler {
                     thisTokenId,
                     /* swapData= */ new bytes(0),
                     /* isCollect= */ false,
-                    IAutomanCommon.CollectConfig({
+                    IAutomanCommon.ZapOutParams({
                         token0FeeAmount: 123,
                         token1FeeAmount: 456,
                         tokenOut: address(0),
@@ -756,7 +762,7 @@ contract UniV3AutomanTest is UniHandler {
                     tokenId,
                     /* swapData= */ new bytes(0),
                     /* isCollect= */ false,
-                    IAutomanCommon.CollectConfig({
+                    IAutomanCommon.ZapOutParams({
                         token0FeeAmount: 123,
                         token1FeeAmount: 456,
                         tokenOut: address(0),
@@ -789,7 +795,7 @@ contract UniV3AutomanTest is UniHandler {
                     tokenId,
                     /* swapData= */ new bytes(0),
                     /* isCollect= */ false,
-                    IAutomanCommon.CollectConfig({
+                    IAutomanCommon.ZapOutParams({
                         token0FeeAmount: 123,
                         token1FeeAmount: 456,
                         tokenOut: address(0),
