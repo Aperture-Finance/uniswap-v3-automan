@@ -2,7 +2,9 @@
 // FOUNDRY_PROFILE=lite forge test --match-path=test/uniswap/SwapRouter.t.sol -vvvvv
 pragma solidity ^0.8.0;
 
+import "@uniswap/v3-core/contracts/interfaces/IUniswapV3Factory.sol";
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "forge-std/Test.sol";
 import "src/base/SwapRouter.sol";
 import {Helper, TickBitmap, TickMath, V3PoolCallee, UniBase} from "./UniBase.sol";
 import {IPCSV3NonfungiblePositionManager} from "@aperture_finance/uni-v3-lib/src/interfaces/IPCSV3NonfungiblePositionManager.sol";
@@ -11,6 +13,12 @@ interface ISwapRouterHandler is ISwapRouterCommon {
     function poolSwap(
         PoolKey memory poolKey,
         address pool,
+        uint256 amountIn,
+        bool zeroForOne
+    ) external returns (uint256 amountOut);
+
+    function poolSwapFromTokenInToTokenOut(
+        PoolKey memory poolKey,
         uint256 amountIn,
         bool zeroForOne
     ) external returns (uint256 amountOut);
@@ -58,6 +66,16 @@ abstract contract SwapRouterHandler is SwapRouter, Helper, ISwapRouterHandler {
         pay(tokenIn, msg.sender, address(this), amountIn);
         amountOut = _poolSwap(poolKey, pool, amountIn, zeroForOne);
         pay(tokenOut, address(this), msg.sender, amountOut);
+    }
+
+    function poolSwapFromTokenInToTokenOut(
+        PoolKey memory poolKey,
+        uint256 amountIn,
+        bool zeroForOne
+    ) external returns (uint256 amountOut) {
+        pay(zeroForOne ? poolKey.token0 : poolKey.token1, msg.sender, address(this), amountIn);
+        amountOut = _poolSwap(poolKey, computeAddressSorted(poolKey), amountIn, zeroForOne);
+        pay(zeroForOne ? poolKey.token1 : poolKey.token0, address(this), msg.sender, amountOut);
     }
 
     /// @dev Make an `exactIn` swap through an allowlisted external router
@@ -397,6 +415,34 @@ contract SwapRouterTest is UniBase {
         uint256 amountOut = router.poolSwap(poolKey, pool, amountSpecified, zeroForOne);
         assertSwapSuccess(zeroForOne, amountOut);
         assertZeroBalance(address(router));
+    }
+
+    /// @dev Test pool swap from tokenIn to tokenOut
+    // FOUNDRY_PROFILE=lite forge test --watch --match-path=test/uniswap/SwapRouter.t.sol --match-test=testFuzz_PoolSwapFromTokenInToTokenOut -vvvvv
+    function testFuzz_PoolSwapFromTokenInToTokenOut(uint256 amountIn, bool zeroForOne) public {
+        amountIn = prepSwap(zeroForOne, amountIn);
+        address tokenIn = ternary(zeroForOne, token0, token1);
+        tokenIn.safeApprove(address(router), amountIn);
+        uint256 amountOut = router.poolSwapFromTokenInToTokenOut(poolKey, amountIn, zeroForOne);
+        assertSwapSuccess(zeroForOne, amountOut);
+        assertZeroBalance(address(router));
+    }
+
+    /// @dev Test pool swap from tokenIn to tokenOut on a pool that doesn't exist.
+    // To run test, rename skipTest_PoolDoesNotExistSwapFromTokenInToTokenOut to test_PoolDoesNotExistSwapFromTokenInToTokenOut and run:
+    // FOUNDRY_PROFILE=lite forge test --watch --match-path=test/uniswap/SwapRouter.t.sol --match-test=test_PoolDoesNotExistSwapFromTokenInToTokenOut -vvvvv
+    function skipTest_PoolDoesNotExistSwapFromTokenInToTokenOut() public {
+        bool zeroForOne = true;
+        uint256 amountIn = 1e18;
+        uint24 feeTier = 10000;
+        token0 = 0x152649eA73beAb28c5b49B26eb48f7EAD6d4c898; // PancakeSwap Token (CAKE)
+        pool = IUniswapV3Factory(factory).getPool(token0, token1, feeTier);
+        poolKey = PoolAddress.getPoolKeySorted(token0, token1, feeTier);
+        address tokenIn = ternary(zeroForOne, token0, token1);
+        deal(token0, address(this), amountIn);
+        tokenIn.safeApprove(address(router), amountIn);
+        // vm.expectRevert(); If not skiping tests for now, expect revert.
+        router.poolSwapFromTokenInToTokenOut(poolKey, amountIn, zeroForOne);
     }
 
     /// @dev Test a router swap
