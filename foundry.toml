@@ -47,5 +47,6 @@ bnb = "https://bsc-dataseed1.defibit.io"
 avalanche = "https://avalanche.public-rpc.com"
 scroll = "${SCROLL_RPC_URL}"
 manta = "https://1rpc.io/manta"
+unichain = "https://unichain-rpc.publicnode.com"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
