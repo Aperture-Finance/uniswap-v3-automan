@@ -43,5 +43,6 @@ arbitrum_one = "${ARBITRUM_RPC_URL}"
 optimism = "${OPTIMISM_RPC_URL}"
 base = "${BASE_RPC_URL}"
 scroll = "https://rpc.scroll.io"
+unichain = "https://unichain-rpc.publicnode.com"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config

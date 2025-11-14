@@ -18,7 +18,7 @@ contract DeployUniV3Automan is Script {
     Create2Deployer internal constant create2deployer = Create2Deployer(0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2);
     bytes32 internal constant automanSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112f9d02aa0154b400009e78fae;
     bytes32 internal constant optimalSwapSalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b31127dfc30de0987800003da9a65;
-    bytes32 internal constant routerProxySalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112bc2281f12f80c0000280f6fd;
+    // bytes32 internal constant routerProxySalt = 0xbeef63ae5a2102506e8a352a5bb32aa8b30b3112bc2281f12f80c0000280f6fd;
 
     // https://book.getfoundry.sh/tutorials/best-practices#scripts
     function readInput(string memory input) internal view returns (string memory) {
@@ -60,11 +60,12 @@ contract DeployUniV3Automan is Script {
 
             // Set up automan
             automan.setFeeConfig(params.feeConfig);
-            address[] memory controllers = new address[](1);
-            controllers[0] = params.controller;
+            address[] memory routers = new address[](1);
+            // Unichain OptimalSwapRouter.
+            routers[0] = 0xdc98664408ebe47146dcC849DbA349E906e74A35;
             bool[] memory statuses = new bool[](1);
             statuses[0] = true;
-            automan.setControllers(controllers, statuses);
+            automan.setSwapRouters(routers, statuses);
             // Transfer ownership to the owner
             automan.transferOwnership(params.owner);
 
@@ -83,6 +84,7 @@ contract DeployUniV3Automan is Script {
         UniV3OptimalSwapRouter optimalSwapRouter = UniV3OptimalSwapRouter(
             payable(create2deployer.computeAddress(optimalSwapSalt, initCodeHash))
         );
+        console2.log("OptimalSwapRouter computed address: %s", address(optimalSwapRouter));
         if (address(optimalSwapRouter).code.length == 0) {
             // Deploy optimalSwapRouter
             create2deployer.deploy(0, optimalSwapSalt, initCode);
